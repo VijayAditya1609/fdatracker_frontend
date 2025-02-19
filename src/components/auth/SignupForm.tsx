@@ -98,6 +98,7 @@ const SignupForm: React.FC = () => {
       highlight: "Effortlessly"
     }
   ];
+  
 
   const FeatureCard: React.FC<{ title: string; highlight: string }> = ({ title, highlight }) => (
     <div className="bg-[#1C2333] bg-opacity-40 border border-[#20489E] rounded-2xl px-4 py-3 relative overflow-hidden max-w-md " 
@@ -206,10 +207,10 @@ const SignupForm: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 flex flex-col lg:flex-row">
+    <div className="min-h-screen bg-black flex flex-col lg:flex-row">
       {/* left Section - Features */}
-      <div className=" w-full lg:w-1/2 p-8 lg:p-16">
-      <div className="mb-16">
+      <div className=" flex-1 flex flex-col justify-center max-w-lg mx-auto w-full">
+      <div className="mb-8">
         <Link to="/" className="inline-block">
           <div className="w-32">
             <Logo />
@@ -228,7 +229,7 @@ const SignupForm: React.FC = () => {
         
         <div className="flex items-center space-x-2 text-sm text-gray-400 mt-6 pt-6">
           <Shield className="w-4 h-4" />
-          <span>Trusted by 7500+ pharma professionals</span>
+          <span>Trusted by 1000+ pharma professionals</span>
         </div>
       </div>
     </div>
@@ -265,8 +266,9 @@ const SignupForm: React.FC = () => {
           </div>
         </div> */}
       {/* </div> */}
+      
       {/* Right Section - Sign Up Form */}
-      <div className="w-full lg:w-1/2 bg-gray-800 min-h-screen flex flex-col p-4 sm:p-6 lg:p-8">
+      <div className="w-full lg:w-1/2 bg-gray-900 min-h-screen flex flex-col p-4 sm:p-6 lg:p-8">
 
 
         <div className="flex-1 flex flex-col justify-center max-w-lg mx-auto w-full px-4">
