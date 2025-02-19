@@ -1,44 +1,41 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { LogOut, MessageCircle, X } from "lucide-react";
+import { LogOut, MessageCircle, X, Menu } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import Logo from "../landing/Logo";
 import { auth } from "../../services/auth";
-import { SubscriptionButton } from "./SubscriptionButton";
+// import { SubscriptionButton } from "./SubscriptionButton";
 import { api } from "../../config/api";
 import { authFetch } from "../../services/authFetch";
 
-export default function Navbar() {
+interface NavbarProps {
+  onSidebarToggle?: () => void;
+}
+
+const Navbar: React.FC<NavbarProps> = ({ onSidebarToggle }) => {
   const { logout, user } = useAuth();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [feedback, setFeedback] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitStatus, setSubmitStatus] = useState<"success" | "error" | null>(
-    null
-  );
+  const [submitStatus, setSubmitStatus] = useState<"success" | "error" | null>(null);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user data exists
     const userData = auth.getUser();
     if (!userData && user) {
-      // Only reload if we're supposed to have a user (user context exists) but local data is missing
       window.location.reload();
     }
     setIsLoading(false);
-  }, [user]); // Add user as a dependency
+  }, [user]);
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (
-        profileMenuRef.current &&
-        !profileMenuRef.current.contains(event.target as Node)
-      ) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setShowProfileMenu(false);
       }
     }
-
     document.addEventListener("mousedown", handleClickOutside);
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
@@ -58,7 +55,6 @@ export default function Navbar() {
         method: "POST",
         body: JSON.stringify({ feedback }),
       });
-      
 
       if (response.ok) {
         setSubmitStatus("success");
@@ -83,6 +79,12 @@ export default function Navbar() {
         <div className="px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center -ml-8">
+              {/* Hamburger menu visible on all screen sizes */}
+              {onSidebarToggle && (
+                <button onClick={onSidebarToggle} className="text-gray-300 mr-2 hover:bg-gray-700 p-1 rounded-md">
+                  <Menu className="h-6 w-6" />
+                </button>
+              )}
               <Link to="/dashboard" className="flex items-center">
                 <Logo />
               </Link>
@@ -116,9 +118,7 @@ export default function Navbar() {
                         <p className="text-sm font-medium text-white">
                           {user?.firstName} {user?.lastName}
                         </p>
-                        <p className="text-sm text-gray-400 mt-1">
-                          {user?.email}
-                        </p>
+                        <p className="text-sm text-gray-400 mt-1">{user?.email}</p>
                       </div>
 
                       <div className="pt-4 space-y-2">
@@ -159,16 +159,12 @@ export default function Navbar() {
 
             <h2 className="text-2xl font-bold text-white mb-2">We Value Your Feedback</h2>
             <p className="text-gray-400 mb-4">
-              Let us know your thoughts, suggestions, or issues you’re facing. 
-              Your feedback helps us improve!
+              Let us know your thoughts, suggestions, or issues you're facing. Your feedback helps us improve!
             </p>
 
             <form onSubmit={handleSubmitFeedback} className="space-y-4">
               <div>
-                <label
-                  htmlFor="feedback"
-                  className="block text-sm font-medium text-gray-300 mb-1"
-                >
+                <label htmlFor="feedback" className="block text-sm font-medium text-gray-300 mb-1">
                   Your Feedback
                 </label>
                 <textarea
@@ -185,9 +181,7 @@ export default function Navbar() {
               {submitStatus && (
                 <div
                   className={`p-3 text-sm rounded-lg text-center ${
-                    submitStatus === "success"
-                      ? "bg-green-700 text-green-200"
-                      : "bg-red-700 text-red-200"
+                    submitStatus === "success" ? "bg-green-700 text-green-200" : "bg-red-700 text-red-200"
                   }`}
                 >
                   {submitStatus === "success"
@@ -209,4 +203,6 @@ export default function Navbar() {
       )}
     </nav>
   );
-}
+};
+
+export default Navbar;

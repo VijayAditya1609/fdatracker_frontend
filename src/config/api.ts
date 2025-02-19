@@ -1,6 +1,6 @@
 import { auth } from "../services/auth";
 
-export const API_BASE_URL = 'http://localhost:8080';   //https://app.fdatracker.ai:9443
+export const API_BASE_URL = 'https://app.fdatracker.ai:9443';   //https://app.fdatracker.ai:9443
 export const api = {
   // Auth endpoints
   signup: `${API_BASE_URL}/signUp`,
@@ -57,6 +57,7 @@ export const api = {
   countOfSubSystemByInvestigator: `${API_BASE_URL}/api/countOfSubSystemByInvestigator`,
   investigatorInspections: `${API_BASE_URL}/api/investigatorInspections`,
   investigatorOverview: `${API_BASE_URL}/api/investigatorsOverview`,
+  coInvestigators: `${API_BASE_URL}/api/coInvestigators`,
 
   //Dashboard Endpoints
   dashboardStats: `${API_BASE_URL}/api/dashboard/Stats`,
@@ -67,6 +68,7 @@ export const api = {
   recentFDAActions: `${API_BASE_URL}/api/dashboard/RecentFDAActions`,
   createCheckoutSession: `${API_BASE_URL}/api/create-checkout-session`,
   feedback: `${API_BASE_URL}/api/feedback`,
+  viewFile: `${API_BASE_URL}/api/view-file`,
 };
 
 export const headers = {

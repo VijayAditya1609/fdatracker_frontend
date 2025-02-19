@@ -48,18 +48,18 @@ export default function Form483DetailsPage() {
       try {
         setIsLoading(true);
         setError(null); // Reset error state when starting a new request
-        
+
         const response = await authFetch(`${api.form483Detail}?id=${id}`);
-    
+
         if (response.status === 429) {
           setError('PAGE_VIEW_LIMIT_EXCEEDED');
           return;
         }
-    
+
         if (!response.ok) {
           throw new Error('You have reached your daily limit. Please subscribe.');
         }
-    
+
         const data = await response.json();
         setForm483Data(data);
       } catch (err) {
@@ -70,7 +70,7 @@ export default function Form483DetailsPage() {
         setIsLoading(false);
       }
     };
-    
+
 
     fetchData();
   }, [id]);
@@ -128,14 +128,41 @@ export default function Form483DetailsPage() {
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 mt-4 sm:mt-0">
-            <button
-              onClick={() => navigate(`/form483s/${id}`)}
-              className="inline-flex items-center justify-center px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg border border-gray-600 font-medium transition-colors"
-            >
-              <ExternalLink className="w-4 h-4 mr-2" />
+          <button
+  onClick={async () => {
+    try {
+      const path = form483Data.form483Details.url;
+      console.log('Form 483 Path:', path);
+      if (!path) {
+        console.error('Path is missing');
+        return;
+      }
+      const token = auth.getToken();
+      console.log('Token being sent:', token);
 
-              View Form 483
-            </button>
+      const response = await authFetch(`${api.viewFile}?path=${encodeURIComponent(path)}`);
+      console.log('Response status:', response.status);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch Form 483');
+      }
+
+      // Convert the response to a Blob (assuming it's a PDF)
+      const blob = await response.blob();
+      // Create an object URL from the blob
+      const blobUrl = window.URL.createObjectURL(blob);
+      // Open the URL in a new tab
+      window.open(blobUrl, '_blank');
+    } catch (error) {
+      console.error('Error viewing Form 483:', error);
+    }
+  }}
+  className="inline-flex items-center justify-center px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg border border-gray-600 font-medium transition-colors"
+>
+  <ExternalLink className="w-4 h-4 mr-2" />
+  View Form 483
+</button>
+
 
             {form483Data.form483Details.warningLetterId > 0 && (
               <button
@@ -148,11 +175,31 @@ export default function Form483DetailsPage() {
             )}
 
             <button
-              onClick={() => navigate(`/form483s/${id}`)}
+              onClick={async () => {
+                try {
+                  setIsDownloading(true);
+                  const pdfId = form483Data.form483Details.pdfId; // Ensure pdfId is available
+                  const url = `${api.AuditReadinessChecklistForm483}?pdfId=${encodeURIComponent(pdfId)}`;
+                  const response = await authFetch(url, { method: 'GET' });
+
+                  const blob = await response.blob();
+                  const downloadUrl = window.URL.createObjectURL(blob);
+                  const link = document.createElement('a');
+                  link.href = downloadUrl;
+                  link.download = `Form483_Checklist_${pdfId}.pdf`;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                  window.URL.revokeObjectURL(downloadUrl);
+                } catch (error) {
+                  console.error('Error downloading Form 483 Checklist:', error);
+                } finally {
+                  setIsDownloading(false);
+                }
+              }}
               disabled={isDownloading}
               className={`flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg 
-                   transition-colors ${isDownloading ? 'opacity-75 cursor-not-allowed' : 'hover:bg-blue-600'}`}
-
+       transition-colors ${isDownloading ? 'opacity-75 cursor-not-allowed' : 'hover:bg-blue-600'}`}
             >
               {isDownloading ? (
                 <>

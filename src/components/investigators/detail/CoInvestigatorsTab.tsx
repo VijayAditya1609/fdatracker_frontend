@@ -3,6 +3,7 @@ import { Users, Activity, ArrowRight, Loader2, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../../../services/auth';
 import { authFetch } from '../../../services/authFetch';
+import { api } from '../../../config/api';
 
 interface CoInvestigator {
   name: string;
@@ -25,7 +26,7 @@ export default function CoInvestigatorsTab({ investigatorId }: CoInvestigatorsTa
     const fetchCoInvestigators = async () => {
       try {
         setIsLoading(true);
-        const response = await authFetch(`https://app.fdatracker.ai:9443/api/coInvestigators?id=${investigatorId}`);
+        const response = await authFetch(`${api.coInvestigators}?id=${investigatorId}`);
         if (!response.ok) throw new Error('Failed to fetch co-investigators');
         const data = await response.json();
         if (data?.coInvestigatorsMap) {

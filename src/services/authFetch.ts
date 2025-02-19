@@ -11,6 +11,12 @@ export class RateLimitError extends Error {
 export const authFetch = async (url: string, options: RequestInit = {}) => {
   const token = auth.getToken();
   
+  // console.log('auth.getToken():', auth.getToken());
+
+  // if (!token || token.trim() === '') {
+  //   console.error('Token is missing or invalid.');
+  //   return Promise.reject(new Error('No authentication token found.'));
+  // } 
   if (!token) {
     auth.logout(); // Logout if token is missing
     return Promise.reject(new Error("No authentication token found."));

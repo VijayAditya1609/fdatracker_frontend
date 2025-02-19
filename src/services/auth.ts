@@ -53,6 +53,21 @@ export const auth = {
     
     // Extract user data from JWT token
     const token = data.token as string;
+    try {
+      const tokenParts = token.split('.');
+      const tokenPayload = JSON.parse(atob(tokenParts[1]));
+      const userToStore = {
+        id: tokenPayload.sub,
+        email: tokenPayload.email,
+        firstName: tokenPayload.firstName || '',
+        lastName: tokenPayload.lastName || '',
+        isSubscribed: tokenPayload.isSubscribed || false,
+      };
+      localStorage.setItem(USER_KEY, JSON.stringify(userToStore));
+    } catch (e) {
+      console.error('Invalid token format:', e);
+      auth.logout();
+    }
     const tokenParts = token.split('.');
     const tokenPayload = JSON.parse(atob(tokenParts[1]));
     
@@ -94,9 +109,17 @@ export const auth = {
   },
 
   setSession: (token: string) => {
-    localStorage.setItem(TOKEN_KEY, token);
-    localStorage.setItem('isAuthenticated', 'true');
+    try {
+      const tokenParts = token.split('.');
+      JSON.parse(atob(tokenParts[1]));  // Decode and verify token
+      localStorage.setItem(TOKEN_KEY, token);
+      localStorage.setItem('isAuthenticated', 'true');
+    } catch (e) {
+      console.error('Invalid token format:', e);
+      auth.logout();
+    }
   },
+  
 
   getToken: (): string | null => {
     return localStorage.getItem(TOKEN_KEY);
