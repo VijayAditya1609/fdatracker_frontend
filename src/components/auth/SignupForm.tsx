@@ -209,7 +209,8 @@ const SignupForm: React.FC = () => {
   return (
     <div className="min-h-screen bg-black flex flex-col lg:flex-row">
       {/* left Section - Features */}
-      <div className=" flex-1 flex flex-col justify-center max-w-lg mx-auto w-full">
+      <div className="flex-1 flex flex-col justify-center max-w-lg mx-auto w-full p-4 sm:p-6 lg:p-8">
+
       <div className="mb-8">
         <Link to="/" className="inline-block">
           <div className="w-32">
