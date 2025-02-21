@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Users, Activity, ArrowRight, Loader2, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { auth } from '../../../services/auth';
 import { authFetch } from '../../../services/authFetch';
 import { api } from '../../../config/api';
 
@@ -39,9 +38,14 @@ export default function CoInvestigatorsTab({ investigatorId }: CoInvestigatorsTa
       }
     };
     
-
     fetchCoInvestigators();
   }, [investigatorId]);
+
+  // Navigate to investigator profile with explicit overview tab selection
+  const navigateToInvestigator = (coinvestigatorId: string) => {
+    // Navigate to the investigator detail page with the 'overview' tab explicitly selected
+    navigate(`/investigators/${coinvestigatorId}?tab=overview`);
+  };
 
   // Filter co-investigators based on search query
   const filteredCoInvestigators = coInvestigators
@@ -101,7 +105,7 @@ export default function CoInvestigatorsTab({ investigatorId }: CoInvestigatorsTa
           <div
             key={investigator.coInvestigatorId}
             className="bg-gray-800 rounded-lg border border-gray-700 p-6 hover:border-gray-600 transition-colors cursor-pointer"
-            onClick={() => navigate(`/investigators/${investigator.coInvestigatorId}`)}
+            onClick={() => navigateToInvestigator(investigator.coInvestigatorId)}
           >
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
@@ -124,7 +128,13 @@ export default function CoInvestigatorsTab({ investigatorId }: CoInvestigatorsTa
             </div>
 
             <div className="mt-6 pt-4 border-t border-gray-700">
-              <button className="flex items-center text-blue-400 hover:text-blue-300 text-sm">
+              <button 
+                className="flex items-center text-blue-400 hover:text-blue-300 text-sm"
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent triggering the parent div's onClick
+                  navigateToInvestigator(investigator.coInvestigatorId);
+                }}
+              >
                 View Profile
                 <ArrowRight className="ml-2 h-4 w-4" />
               </button>

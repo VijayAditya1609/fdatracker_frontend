@@ -71,7 +71,7 @@ export default function OverviewTab({ data }: OverviewTabProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-4">
+          <div className="gap-4 grid grid-cols-1 md:grid-cols-4">
             <div className="bg-gray-700/50 rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div className="text-sm text-gray-400">Issue Date</div>

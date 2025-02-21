@@ -15,7 +15,7 @@ export const api = {
   form483Detail: `${API_BASE_URL}/api/483Detail`,
   form483Request: `${API_BASE_URL}/api/form483-request`,
   observationDetail: `${API_BASE_URL}/api/ObservationDetail`,
-  AuditReadinessChecklistForm483: `${API_BASE_URL}/AuditReadinessCheckListFor483`,
+  AuditReadinessChecklistForm483: `${API_BASE_URL}/api/AuditReadinessCheckListFor483`,
   
   // Warning Letter endpoints
   warningLettersList: `${API_BASE_URL}/api/WlList`,
@@ -37,7 +37,7 @@ export const api = {
   sixSystemsList: `${API_BASE_URL}/api/SixSystemsList`,
   systemsDetail: `${API_BASE_URL}/api/systemReport`,
   subSystemReport: `${API_BASE_URL}/api/subSystemReport`,
-  processChecklist: `${API_BASE_URL}/AuditReadinessCheckListForSubSystem`,
+  processChecklist: `${API_BASE_URL}/api/AuditReadinessCheckListForSubSystem`,
   
   // Inspection endpoints
   inspectionsList: `${API_BASE_URL}/api/InspectionList`,
@@ -46,7 +46,7 @@ export const api = {
   // Facility endpoints
   facilitiesList: `${API_BASE_URL}/api/facilitiesList`,
   facilityDetail: `${API_BASE_URL}/api/facilityDetail`,
-  AuditReadinessCheckListForFacility: `${API_BASE_URL}/AuditReadinessCheckListForFacility`,
+  AuditReadinessCheckListForFacility: `${API_BASE_URL}/api/AuditReadinessCheckListForFacility`,
   // Search endpoints
   search: `${API_BASE_URL}/getFilters`,
   searchData: `${API_BASE_URL}/api/searchData`,

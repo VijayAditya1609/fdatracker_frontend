@@ -8,7 +8,7 @@ import {
   Users,
   CheckCircle,
   AlertTriangle,
-  AlertCircle ,
+  AlertCircle,
   XCircle,
   FileText,
   FileWarning,
@@ -274,7 +274,7 @@ export default function InspectionDetailsPage() {
 
         {/* Tabs */}
         <div className="mt-8 border-b border-gray-700">
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex space-x-8 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-800">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (
@@ -534,41 +534,34 @@ export default function InspectionDetailsPage() {
               </div>
 
               {/* Inspection History Table */}
-              <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-700">
-                  <thead className="bg-gray-900/50">
-                    <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
-                        Year
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
-                        Inspections
-                      </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">
-                        Classification
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-700">
-                    {inspectionData.complianceHistory.inspections.map((inspection) => (
-                      <tr key={inspection.year} className="hover:bg-gray-700/50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                          {inspection.year}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                          {inspection.count}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium
-                            ${getClassificationColor(inspection.classification)}`}>
-                            {inspection.classification}
-                          </span>
-                        </td>
+              <div className="w-full overflow-x-auto">
+                <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+                  <table className="min-w-full divide-y divide-gray-700">
+                    <thead className="bg-gray-900/50">
+                      <tr>
+                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Year</th>
+                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Inspections</th>
+                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Classification</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-gray-700">
+                      {inspectionData.complianceHistory.inspections.map((inspection) => (
+                        <tr key={inspection.year} className="hover:bg-gray-700/50">
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-300">{inspection.year}</td>
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-300">{inspection.count}</td>
+                          <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
+                            <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium
+                ${getClassificationColor(inspection.classification)}`}>
+                              {inspection.classification}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
+
             </div>
           )}
         </div>

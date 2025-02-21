@@ -233,7 +233,7 @@ export default function FacilitiesPage() {
         </div>
 
         {/* Search and Filters */}
-        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 w-full">
           {/* Search Input */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
@@ -298,7 +298,7 @@ export default function FacilitiesPage() {
           ) : null}
 
           {/* Add Sort Options */}
-          <div className="flex flex-col gap-4 sm:flex-row ">
+          <div className="flex flex-col gap-4 sm:flex-row md:flex-col lg:flex-row">
             {sortOptions.map(({ label, field }) => (
               <div key={field} className="flex gap-2">
                 <span className="text-gray-400 flex items-center min-w-24">{label}:</span>

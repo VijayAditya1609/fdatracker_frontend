@@ -203,7 +203,7 @@ export default function CompanyOverview() {
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-4 gap-4">
+      <div className="gap-4 grid grid-cols-1 md:grid-cols-4">
         <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
           <p className="text-sm text-gray-400">Active Facilities</p>
           <p className="text-2xl font-semibold text-white mt-2">
@@ -236,7 +236,7 @@ export default function CompanyOverview() {
         </div>
         
       </div>
-      <div className="grid grid-cols-2 gap-6">
+      <div className="gap-6 grid grid-cols-1 md:grid-cols-2">
         <div className="bg-gray-800 rounded-lg p-6">
           <h3 className="text-lg font-semibold text-white mb-6">
             Inspection by Classification Code

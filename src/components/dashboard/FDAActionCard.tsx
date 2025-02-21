@@ -82,7 +82,7 @@ export default function FDAActionCard({ action }: FDAActionCardProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-3">
+      <div className="gap-4 grid grid-cols-1 md:grid-cols-3">
         <div className="bg-gray-800/50 rounded-lg p-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center">

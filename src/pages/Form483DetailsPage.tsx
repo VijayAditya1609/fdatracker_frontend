@@ -107,7 +107,7 @@ export default function Form483DetailsPage() {
   return (
     <DashboardLayout>
       <div className="px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-0">
+        <div className="flex flex-wrap flex-col sm:flex-row sm:items-center sm:justify-between mb-0">
           <div className="flex items-center justify-between mb-8">
             <div>
               <button
@@ -217,7 +217,7 @@ export default function Form483DetailsPage() {
         </div>
 
         <div className="border-b border-gray-700">
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex space-x-8 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-800">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (

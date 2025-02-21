@@ -106,7 +106,7 @@ export default function TopInvestigators() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="gap-4 grid grid-cols-1 md:grid-cols-3">
               <div className="bg-gray-800/50 rounded-lg p-4 group-hover:bg-gray-800/70 transition-colors">
                 <div className="flex items-center gap-3 mb-2">
                   <Activity className="h-4 w-4 text-blue-400" />

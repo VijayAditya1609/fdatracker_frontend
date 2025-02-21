@@ -45,7 +45,7 @@ export default function CompanyCard({ company, onClick }: CompanyCardProps) {
         </div>
 
         {/* Metrics Grid */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="gap-4 grid grid-cols-1 md:grid-cols-3">
 
         <div className="bg-gray-800/50 rounded-lg p-4 group-hover:bg-gray-800 transition-colors">
             <div className="flex items-center justify-between mb-2">

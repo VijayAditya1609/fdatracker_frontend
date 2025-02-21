@@ -147,7 +147,7 @@ export default function OverviewTab({ investigator }: OverviewTabProps) {
 
      
 
-      <div className="grid grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
       <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
         <div className="flex items-center justify-between">
           <div className="text-sm text-gray-400">Facilities Inspected</div>
@@ -211,7 +211,7 @@ export default function OverviewTab({ investigator }: OverviewTabProps) {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
         {/* Inspection Trend */}
         <div className="bg-gray-800 rounded-lg border border-gray-700 p-6">
           <h3 className="text-lg font-semibold text-white mb-6">Form 483 Trend</h3>
@@ -324,7 +324,7 @@ export default function OverviewTab({ investigator }: OverviewTabProps) {
         </div>
 
         {/* Pagination */}
-        <div className="px-4 py-4 border-t border-gray-700 mt-4 flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-3 w-full overflow-hidden">
           <div className="text-sm text-gray-400">
             Showing <span className="font-medium text-white">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to{' '}
             <span className="font-medium text-white">

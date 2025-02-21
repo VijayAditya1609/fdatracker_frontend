@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import DashboardLayout from '../components/layouts/DashboardLayout';
 import { Activity, FileText, Users, ArrowLeft, Loader2 } from 'lucide-react';
 import TabNavigation from '../components/common/TabNavigation';
@@ -10,7 +10,6 @@ import CoInvestigatorsTab from '../components/investigators/detail/CoInvestigato
 import { getInvestigatorDetail, getInvestigatorOverview, getInvestigatorSubsystems } from '../services/investigators';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import UpgradeMessage from '../components/investigators/UpgradeMessage';
-
 
 const tabs = [  
   { id: 'overview', label: 'Overview', icon: Activity },
@@ -23,12 +22,32 @@ export default function InvestigatorDetailPage() {
   useDocumentTitle('Investigator Details');
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
+  const location = useLocation();
+  
+  // Get tab from URL query parameter or default to 'overview'
+  const searchParams = new URLSearchParams(location.search);
+  const tabFromUrl = searchParams.get('tab');
+  const validTabs = tabs.map(tab => tab.id);
+  
+  // Initialize active tab from URL or default to 'overview'
+  const [activeTab, setActiveTab] = useState(
+    validTabs.includes(tabFromUrl as string) ? tabFromUrl as string : 'overview'
+  );
+  
   const [investigator, setInvestigator] = useState<any>(null);
   const [overview, setOverview] = useState<any>(null);
   const [subsystems, setSubsystems] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Handle tab changes and update URL
+  const handleTabChange = (tabId: string) => {
+    setActiveTab(tabId);
+    // Update URL with new tab parameter without full page reload
+    const newSearchParams = new URLSearchParams(location.search);
+    newSearchParams.set('tab', tabId);
+    navigate(`${location.pathname}?${newSearchParams.toString()}`, { replace: true });
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -70,6 +89,14 @@ export default function InvestigatorDetailPage() {
       fetchData();
     }
   }, [id]);
+
+  // Check for tab changes in URL when location changes
+  useEffect(() => {
+    const tabParam = new URLSearchParams(location.search).get('tab');
+    if (tabParam && validTabs.includes(tabParam) && tabParam !== activeTab) {
+      setActiveTab(tabParam);
+    }
+  }, [location, validTabs]);
 
   // Show loading spinner while the request is in progress
   if (isLoading) {
@@ -132,7 +159,7 @@ export default function InvestigatorDetailPage() {
         <TabNavigation
           tabs={tabs}
           activeTab={activeTab}
-          onTabChange={setActiveTab}
+          onTabChange={handleTabChange}
         />
 
         {/* Tab Content */}

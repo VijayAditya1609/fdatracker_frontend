@@ -210,7 +210,7 @@ export default function SystemOverview({ subSystemData, subSystemName, dateRange
       {/* Key Metrics Section */}
       <div>
         <h2 className="text-lg font-semibold text-white mb-4">Key Metrics</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {metrics.map((metric) => (
             <div 
               key={metric.title} 

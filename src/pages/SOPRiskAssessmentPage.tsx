@@ -207,7 +207,7 @@ export default function SOPRiskAssessmentPage() {
 
         {/* Tabs */}
         <div className="mt-8 border-b border-gray-700">
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex space-x-8 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-800">
             {['overview', 'historical-findings', 'recommendations'].map((tab) => (
               <button
                 key={tab}

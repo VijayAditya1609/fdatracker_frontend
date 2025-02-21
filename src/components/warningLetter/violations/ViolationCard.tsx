@@ -22,11 +22,11 @@ export default function ViolationCard({ violation, warningLetterId }: ViolationC
     >
       <div className="p-6">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-wrap items-center gap-2 sm:space-x-4">
             <span className="text-lg font-semibold text-white">
               Violation {violation.violationNumber}
             </span>
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-wrap items-center gap-2 sm:space-x-2">
               {violation.process_types_affected.map((processType, index) => (
 
                 <span

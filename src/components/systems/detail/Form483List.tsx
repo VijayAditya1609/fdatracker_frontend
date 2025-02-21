@@ -119,7 +119,7 @@ export default function Form483List({ form483s }: Form483ListProps) {
                      placeholder-gray-400"
           />
         </div>
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-4">
           <select
             value={filterProductType}
             onChange={(e) => setFilterProductType(e.target.value)}
@@ -241,7 +241,7 @@ export default function Form483List({ form483s }: Form483ListProps) {
       </div>
 
       {/* Replace the existing pagination with this new one */}
-      <div className="px-6 py-4 border-t border-gray-700 flex items-center justify-between">
+      <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-3 w-full overflow-hidden">
         <div className="text-sm text-gray-400">
           Showing <span className="font-medium text-white">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
           <span className="font-medium text-white">

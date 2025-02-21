@@ -151,7 +151,7 @@ export default function SystemDetailPage() {
       <div className="px-8 py-6">
         <div className="space-y-6">
           {/* Back Button and Title Section */}
-          <div className="flex justify-between items-start">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
             <div>
               <button
                 onClick={() => navigate('/sixSystems')}

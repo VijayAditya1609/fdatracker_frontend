@@ -14,14 +14,14 @@ export default function ChecklistTab({ observations }: ChecklistTabProps) {
 
   // Get all unique process types
   const processTypes = Array.from(new Set(
-    observations.flatMap(obs => 
+    observations.flatMap(obs =>
       obs.process_types_affected.map(type => type.process_type)
     )
   ));
 
   // Get all checklist items with their context
-  const allChecklistItems = observations.flatMap(obs => 
-    obs.process_types_affected.flatMap(processType => 
+  const allChecklistItems = observations.flatMap(obs =>
+    obs.process_types_affected.flatMap(processType =>
       processType.checklist.map(item => ({
         ...item,
         observationNumber: obs.observationNumber,
@@ -34,7 +34,7 @@ export default function ChecklistTab({ observations }: ChecklistTabProps) {
   // Filter checklist items based on process type and search query
   const filteredItems = allChecklistItems.filter(item => {
     const matchesProcessType = !selectedProcessType || item.processType === selectedProcessType;
-    const matchesSearch = !searchQuery || 
+    const matchesSearch = !searchQuery ||
       item.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.acceptance_criteria.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.required_action.toLowerCase().includes(searchQuery.toLowerCase());
@@ -54,7 +54,7 @@ export default function ChecklistTab({ observations }: ChecklistTabProps) {
   return (
     <div className="space-y-6">
       {/* Summary Stats */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-4">
         <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
           <div className="flex items-center justify-between">
             <div className="text-sm text-gray-400">Total Checklist Items</div>
@@ -113,52 +113,54 @@ export default function ChecklistTab({ observations }: ChecklistTabProps) {
 
       {/* Checklist Table */}
       <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-700">
-          <thead className="bg-gray-900/50">
-            <tr>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                Observation
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                 Sub-System
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                Question
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                Acceptance Criteria
-              </th>
-              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                Required Action
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-gray-800 divide-y divide-gray-700">
-            {paginatedItems.map((item, index) => (
-              <tr key={index} className="hover:bg-gray-700/50">
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <span className="inline-flex items-center rounded-full bg-blue-400/10 px-2.5 py-1 text-xs font-medium text-blue-400">
-                    {item.observationNumber}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm">
-                  <span className="inline-flex items-center rounded-full bg-purple-400/10 px-2.5 py-1 text-xs font-medium text-purple-400">
-                    {item.processType}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-300">
-                  {item.question}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-300">
-                  {item.acceptance_criteria}
-                </td>
-                <td className="px-6 py-4 text-sm text-gray-300">
-                  {item.required_action}
-                </td>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-700">
+            <thead className="bg-gray-900/50">
+              <tr>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Observation
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Sub-System
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Question
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Acceptance Criteria
+                </th>
+                <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                  Required Action
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="bg-gray-800 divide-y divide-gray-700">
+              {paginatedItems.map((item, index) => (
+                <tr key={index} className="hover:bg-gray-700/50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span className="inline-flex items-center rounded-full bg-blue-400/10 px-2.5 py-1 text-xs font-medium text-blue-400">
+                      {item.observationNumber}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <span className="inline-flex items-center rounded-full bg-purple-400/10 px-2.5 py-1 text-xs font-medium text-purple-400">
+                      {item.processType}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-300">
+                    {item.question}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-300">
+                    {item.acceptance_criteria}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-300">
+                    {item.required_action}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* Pagination */}

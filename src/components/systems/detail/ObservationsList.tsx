@@ -232,7 +232,7 @@ export default function ObservationsList({ observations }: ObservationsListProps
         </div>
 
         {/* Pagination */}
-        <div className="px-6 py-4 border-t border-gray-700 flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-3 w-full overflow-hidden">
           <div className="text-sm text-gray-400">
             Showing <span className="font-medium text-white">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to{' '}
             <span className="font-medium text-white">

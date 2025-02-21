@@ -25,11 +25,15 @@ export default function ProcessChecklist({ checklist, processType, dateRange }: 
     try {
       setIsDownloading(true);
       const encodedProcessType = encodeURIComponent(processType);
-      const url = `${api.processChecklist}?process_type=${encodedProcessType}&date_Range=${dateRange}`;
-      const response = await authFetch(url);
+      // Update the URL to use the /api prefix
+      const response = await authFetch(`${api.processChecklist}?process_type=${encodedProcessType}&date_Range=${dateRange}`);
+
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const blob = await response.blob();
-      
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
@@ -40,14 +44,24 @@ export default function ProcessChecklist({ checklist, processType, dateRange }: 
       window.URL.revokeObjectURL(downloadUrl);
     } catch (error) {
       console.error('Error downloading checklist:', error);
-      // You might want to add proper error handling here
+      // Handle specific errors
+      if (error instanceof Error) {
+        if (error.message.includes('Unauthorized')) {
+          // Handle unauthorized access - your authFetch already handles logout
+          // You might want to show a message to the user or redirect
+        } else if (error.message.includes('No authentication token')) {
+          // Handle missing token
+        } else {
+          // Handle other errors
+        }
+      }
     } finally {
       setIsDownloading(false);
     }
   };
 
   // Filter checklist based on search
-  const filteredChecklist = checklist.filter(item => 
+  const filteredChecklist = checklist.filter(item =>
     item.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.acceptance_criteria.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -62,7 +76,7 @@ export default function ProcessChecklist({ checklist, processType, dateRange }: 
   const getPageNumbers = () => {
     const pages = [];
     const maxVisiblePages = 5;
-    
+
     if (totalPages <= maxVisiblePages) {
       for (let i = 1; i <= totalPages; i++) {
         pages.push(i);
@@ -136,35 +150,45 @@ export default function ProcessChecklist({ checklist, processType, dateRange }: 
 
       {/* Checklist Table */}
       <div className="bg-gray-800 rounded-lg border border-gray-700">
-        <div className="overflow-x-auto">
-          <table className="w-full table-fixed">
-            <thead>
-              <tr className="bg-gray-700/50">
-                <th className="px-6 py-4 text-left text-sm font-semibold text-white border-b border-gray-600 w-16">#</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-white border-b border-gray-600 w-[45%]">Question</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-white border-b border-gray-600">Acceptance Criteria</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-700">
-              {currentItems.map((item, index) => (
-                <tr key={index} className="hover:bg-gray-700/30">
-                  <td className="px-6 py-4 text-sm text-gray-300 align-top w-16">
-                    {startIndex + index + 1}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-300 align-top break-words">
-                    {item.question}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-gray-300 align-top break-words">
-                    {item.acceptance_criteria}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+  <div className="overflow-x-auto">
+    <table className="min-w-full divide-y divide-gray-700">
+      <thead className="bg-gray-900/50">
+        <tr>
+          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">
+            #
+          </th>
+          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">
+            Question
+          </th>
+          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider whitespace-nowrap">
+            Acceptance Criteria
+          </th>
+        </tr>
+      </thead>
+      <tbody className="bg-gray-800 divide-y divide-gray-700">
+        {currentItems.map((item, index) => (
+          <tr key={index} className="hover:bg-gray-700/50">
+            <td className="px-6 py-4 whitespace-nowrap text-sm">
+              <span className="inline-flex items-center rounded-full bg-blue-400/10 px-2.5 py-1 text-xs font-medium text-blue-400">
+                {startIndex + index + 1}
+              </span>
+            </td>
+            <td className="px-6 py-4 text-sm text-gray-300 break-words">
+              {item.question}
+            </td>
+            <td className="px-6 py-4 text-sm text-gray-300 break-words">
+              {item.acceptance_criteria}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</div>
 
         {/* Pagination */}
-        <div className="px-6 py-4 border-t border-gray-700 flex items-center justify-between">
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-3 w-full overflow-hidden">
           <div className="text-sm text-gray-400">
             Showing <span className="font-medium text-white">{startIndex + 1}</span> to{' '}
             <span className="font-medium text-white">
@@ -176,11 +200,10 @@ export default function ProcessChecklist({ checklist, processType, dateRange }: 
             <button
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               disabled={currentPage === 1}
-              className={`p-2 rounded-lg ${
-                currentPage === 1
+              className={`p-2 rounded-lg ${currentPage === 1
                   ? 'text-gray-500 cursor-not-allowed'
                   : 'text-gray-400 hover:text-white hover:bg-gray-700'
-              }`}
+                }`}
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
@@ -190,13 +213,12 @@ export default function ProcessChecklist({ checklist, processType, dateRange }: 
                 <button
                   key={idx}
                   onClick={() => typeof pageNum === 'number' && setCurrentPage(pageNum)}
-                  className={`px-3 py-1 rounded-lg ${
-                    pageNum === '...'
+                  className={`px-3 py-1 rounded-lg ${pageNum === '...'
                       ? 'text-gray-400 cursor-default'
                       : pageNum === currentPage
-                      ? 'bg-blue-500 text-white'
-                      : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                  }`}
+                        ? 'bg-blue-500 text-white'
+                        : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                    }`}
                 >
                   {pageNum}
                 </button>
@@ -206,11 +228,10 @@ export default function ProcessChecklist({ checklist, processType, dateRange }: 
             <button
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               disabled={currentPage === totalPages}
-              className={`p-2 rounded-lg ${
-                currentPage === totalPages
+              className={`p-2 rounded-lg ${currentPage === totalPages
                   ? 'text-gray-500 cursor-not-allowed'
                   : 'text-gray-400 hover:text-white hover:bg-gray-700'
-              }`}
+                }`}
             >
               <ChevronRight className="h-5 w-5" />
             </button>

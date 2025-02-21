@@ -25,7 +25,7 @@ export default function CriticalMetrics({
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <Activity className="h-5 w-5 text-blue-400" />
-            <span className="text-sm font-medium text-gray-300">SubSystems Impacted</span>
+            <span className="text-sm font-medium text-gray-300">Sub Systems Impacted</span>
           </div>
           <span className="text-2xl font-bold text-white">{systemsCited.length}</span>
         </div>

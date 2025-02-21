@@ -52,7 +52,7 @@ interface DashboardLayoutProps {
 }
 
 export default function DashboardLayout({ children }: DashboardLayoutProps): JSX.Element {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const location = useLocation();
   
   useEffect(() => {
@@ -201,7 +201,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps): JSX
       <div className="flex flex-1 flex-col w-full">
         <Navbar onSidebarToggle={() => setSidebarOpen(!sidebarOpen)} />
         
-        <main className="flex-1 overflow-auto p-6 pt-20">
+        <main className="flex-1 overflow-auto p-6 pt-16">
           {children}
         </main>
       </div>

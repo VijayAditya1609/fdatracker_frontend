@@ -96,14 +96,14 @@ export default function WarningLetterDetailsPage() {
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Warning Letters
             </button>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4">
               <h1 className="text-2xl font-semibold text-white">Warning Letter Details</h1>
               <span className="inline-flex items-center rounded-full bg-red-400/10 px-3 py-1 text-sm font-medium text-red-400">
                 {warningLetterDetails.documentType}
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 md:gap-4">
             {warningLetterDetails.linked483Id && (
               <button
                 onClick={() => navigate(`/form-483s/${warningLetterDetails.linked483Id}`)}
@@ -118,8 +118,7 @@ export default function WarningLetterDetailsPage() {
                 href={warningLetterDetails.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors"
-              >
+                className="inline-flex items-center px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors text-sm sm:text-base w-full sm:w-auto">
                 <LinkIcon className="w-4 h-4 mr-2" />
                 View Letter
               </a>
@@ -129,7 +128,7 @@ export default function WarningLetterDetailsPage() {
 
         {/* Tabs */}
         <div className="border-b border-gray-700">
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex space-x-8 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-800">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               return (

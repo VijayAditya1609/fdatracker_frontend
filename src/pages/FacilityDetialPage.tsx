@@ -10,6 +10,7 @@ import { getFacilityTopInvestigators, getFacilityChartData, getFacilitySubsystem
 import Alert from '../components/common/Alert';
 import UpgradeMessage from '../components/form483/UpgradeMessage';
 import { api } from '../config/api';
+import { authFetch } from '../services/authFetch';
 
 interface FacilityData {
   topInvestigators: TopInvestigator[];
@@ -33,7 +34,7 @@ export default function FacilityDetailPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const facilityName = location.state?.facilityName || 'Facility Details';
-  
+
   const [activeTab, setActiveTab] = useState<typeof tabs[number]['id']>('overview');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +64,7 @@ export default function FacilityDetailPage() {
         if (!facilityDetail || !charts || !subs || !docs) {
           throw new Error('You have reached your daily limit. Please subscribe.');
         }
-        
+
         setFacilityData({
           topInvestigators: facilityDetail.topInvestigators,
           stats: facilityDetail.stats,
@@ -91,23 +92,24 @@ export default function FacilityDetailPage() {
       setDownloadError(null);
       const encodedFacilityName = encodeURIComponent(facilityName);
       const url = `${api.AuditReadinessCheckListForFacility}?feinumber=${feinumber}&facilityName=${encodedFacilityName}`;
-      
-      const response = await fetch(url);
-      
+
+      const response = await authFetch(url, { method: 'GET' });
+
+
       if (response.status === 429) {
         setError('You have reached your daily limit. Please subscribe.');
         return;
       }
-      
+
       if (response.status === 404) {
         setDownloadError('No audit checklist available for this facility');
         return;
       }
-      
+
       if (!response.ok) {
         throw new Error('Failed to download checklist');
       }
-      
+
       const blob = await response.blob();
       if (blob.size === 0) {
         setDownloadError('No audit checklist available for this facility');
@@ -118,7 +120,7 @@ export default function FacilityDetailPage() {
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.download = `${facilityName}_Audit_Checklist.pdf`;
-      
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -182,14 +184,14 @@ export default function FacilityDetailPage() {
               </div>
             </div>
           </div>
-          
+
           {/* Download Button and Error Message */}
-          <div className="mt-4 sm:mt-0 flex flex-col items-end gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-0">
             <button
               onClick={handleDownloadChecklist}
               disabled={isDownloading}
               className={`flex items-center gap-2 px-4 py-2.5 bg-blue-500 text-white rounded-lg 
-                transition-colors ${isDownloading ? 'opacity-75 cursor-not-allowed' : 'hover:bg-blue-600'}`}
+      transition-colors ${isDownloading ? 'opacity-75 cursor-not-allowed' : 'hover:bg-blue-600'}`}
             >
               {isDownloading ? (
                 <>
@@ -205,7 +207,7 @@ export default function FacilityDetailPage() {
             </button>
             {downloadError && (
               <div className="w-full sm:w-auto">
-                <Alert 
+                <Alert
                   type="warning"
                   message={downloadError}
                   onClose={() => setDownloadError(null)}
@@ -217,7 +219,7 @@ export default function FacilityDetailPage() {
 
         {/* Tabs */}
         <div className="border-b border-gray-700">
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex space-x-8 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-800">
             {tabs.map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -241,9 +243,9 @@ export default function FacilityDetailPage() {
         <div className="mt-4">
           {activeTab === 'overview' && (
             <div className="space-y-6">
-              <InspectionHistory 
-                chartData={facilityData.chartData} 
-                stats={facilityData.stats} 
+              <InspectionHistory
+                chartData={facilityData.chartData}
+                stats={facilityData.stats}
               />
               <TopInvestigators investigators={facilityData.topInvestigators} />
             </div>

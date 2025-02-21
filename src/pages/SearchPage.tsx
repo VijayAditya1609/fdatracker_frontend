@@ -506,7 +506,7 @@ export default function SearchPage() {
     <DashboardLayout>
       <div className="h-full flex flex-col">
         {/* Sticky Header Section */}
-        <div className="sticky top-0 z-20 bg-gray-900 px-8 py-4 border-b border-gray-800">
+        <div className="sticky top-0 z-20 bg-gray-900 px-8 py-4 border-b border-gray-800 mt-6">
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-2xl font-semibold text-gradient bg-gradient-to-r from-blue-400 to-purple-500 text-transparent bg-clip-text">
@@ -550,7 +550,7 @@ export default function SearchPage() {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 px-8">
             {/* Sticky Filters Section */}
             <div className="lg:col-span-1">
-              <div className="sticky top-[172px] max-h-[calc(100vh-172px)] overflow-y-auto scrollbar-thin scrollbar-track-gray-800 scrollbar-thumb-gray-600 hover:scrollbar-thumb-gray-500">
+              <div className="top-[172px] max-h-[calc(100vh-172px)] overflow-y-auto scrollbar-thin scrollbar-track-gray-800 scrollbar-thumb-gray-600 hover:scrollbar-thumb-gray-500">
                 <div className="bg-gray-800 rounded-lg border border-gray-700 p-4">
                   <h2 className="text-lg font-medium text-white mb-4">Filters</h2>
 
@@ -979,7 +979,7 @@ export default function SearchPage() {
                       <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6">
                       {topForm483s.map(renderForm483Card)}
                     </div>
                   )}
@@ -998,7 +998,7 @@ export default function SearchPage() {
                       <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6">
                       {topWarningLetters.map(renderWarningLetterCard)}
                     </div>
                   )}

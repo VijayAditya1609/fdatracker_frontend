@@ -15,7 +15,7 @@ interface TabNavigationProps {
 export default function TabNavigation({ tabs, activeTab, onTabChange }: TabNavigationProps) {
   return (
     <div className="mt-8 border-b border-gray-700">
-      <nav className="-mb-px flex space-x-8">
+      <nav className="-mb-px flex space-x-8 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-800">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
