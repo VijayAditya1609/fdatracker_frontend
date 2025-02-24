@@ -211,7 +211,7 @@ const SignupForm: React.FC = () => {
       {/* left Section - Features */}
       <div className="flex-1 flex flex-col justify-center max-w-lg mx-auto w-full p-4 sm:p-6 lg:p-8">
 
-      <div className="mb-8">
+      <div className="mb-8 flex ">
         <Link to="/" className="inline-block">
           <div className="w-32">
             <Logo />
@@ -230,7 +230,7 @@ const SignupForm: React.FC = () => {
         
         <div className="flex items-center space-x-2 text-sm text-gray-400 mt-6 pt-6">
           <Shield className="w-4 h-4" />
-          <span>Trusted by 1000+ pharma professionals</span>
+          <span>Trusted by 7500+ pharma professionals</span>
         </div>
       </div>
     </div>
@@ -357,7 +357,7 @@ const SignupForm: React.FC = () => {
                 className="block w-full rounded-md border border-gray-600 bg-gray-700 px-3 py-2 text-sm text-white placeholder-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
               />
             </div>
-
+            <br />
             <button
               type="submit"
               disabled={isLoading || !recaptchaReady}
@@ -369,7 +369,7 @@ const SignupForm: React.FC = () => {
                   Signing up...
                 </>
               ) : (
-                'Create free account'
+                'Get Started Free'
               )}
             </button>
           </form>
