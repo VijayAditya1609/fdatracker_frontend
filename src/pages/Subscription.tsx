@@ -106,7 +106,7 @@ export default function Subscription() {
               </div>
               <div className="p-6">
                 <h3 className="text-xl font-semibold text-white">Elite Plan</h3>
-                <p className="mt-2 text-gray-400">Advanced features for power users</p>
+                <p className="mt-2 text-gray-400">Advanced features for Elite users</p>
                 <p className="mt-4">
                   <span className="text-3xl font-bold text-white">$50</span>
                   <span className="text-gray-400 ml-2">/month</span>

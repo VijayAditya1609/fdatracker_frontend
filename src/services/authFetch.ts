@@ -30,7 +30,7 @@ export const authFetch = async (url: string, options: RequestInit = {}) => {
   try {
     const response = await fetch(url, { ...options, headers });
 
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       auth.logout(); // Logout if token is invalid
       return Promise.reject(new Error("Unauthorized. Redirecting to login..."));
     }

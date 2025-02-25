@@ -37,14 +37,17 @@ export default function WarningLetterDetailsPage() {
         const response = await authFetch(`${api.warningLetterDetail}?id=${id}`);
   
         if (response.status === 429) {
-          setError('PAGE_VIEW_LIMIT_EXCEEDED');
+          setError("PAGE_VIEW_LIMIT_EXCEEDED");
           return;
+        } else if (!response.ok) {
+          const errMessage = await response.text();
+          throw new Error(errMessage || "An error occurred while fetching data.");
         }
   
         const data = await response.json();
         setWarningLetterData(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'You have reached your daily limit. Please subscribe.');
+        setError(err instanceof Error ? err.message : "An unexpected error occurred.");
       } finally {
         setIsLoading(false);
       }
@@ -52,6 +55,7 @@ export default function WarningLetterDetailsPage() {
   
     fetchData();
   }, [id]);
+  
   
 
   // Show loading spinner while the request is in progress
@@ -66,15 +70,17 @@ export default function WarningLetterDetailsPage() {
   }
 
   // Show upgrade modal if we have an error or no data after loading
-  if (!isLoading && (error || (!warningLetterData && !isLoading))) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <UpgradeMessage />
-        </div>
-      </DashboardLayout>
-    );
-  }
+  // Show upgrade modal if rate limit is exceeded or error exists
+if (error === "PAGE_VIEW_LIMIT_EXCEEDED" || error) {
+  return (
+    <DashboardLayout>
+      <div className="flex items-center justify-center min-h-screen">
+        <UpgradeMessage />
+      </div>
+    </DashboardLayout>
+  );
+}
+
 
   // Ensure we have data before rendering
   if (!warningLetterData) {
