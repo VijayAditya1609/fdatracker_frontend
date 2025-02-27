@@ -1,6 +1,6 @@
 import { auth } from "../services/auth";
 
-export const API_BASE_URL = 'http://localhost:8080';   //https://app.fdatracker.ai:9443
+export const API_BASE_URL = 'https://app.fdatracker.ai:9443';   //https://app.fdatracker.ai:9443
 export const api = {
   // Auth endpoints
   signup: `${API_BASE_URL}/signUp`,
