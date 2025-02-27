@@ -22,6 +22,7 @@ export default function ViolationDetailPage() {
   const [violation, setViolation] = useState<Violation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeProcessType, setActiveProcessType] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchViolation = async () => {
@@ -32,6 +33,11 @@ export default function ViolationDetailPage() {
         setError(null);
         const data = await getViolationDetails(id);
         setViolation(data);
+        
+        // Set default active process type if available
+        if (data.process_types_affected && data.process_types_affected.length > 0) {
+          setActiveProcessType(data.process_types_affected[0].processType);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load violation details');
       } finally {
@@ -122,14 +128,41 @@ export default function ViolationDetailPage() {
           </nav>
         </div>
 
+        {/* Process Type Selection (for Sub-system Analysis and Corrective Actions tabs) */}
+        {(activeTab === 'process-analysis' || activeTab === 'corrective-actions') && (
+          <div className="mt-6">
+            <label htmlFor="processType" className="block text-sm font-medium text-gray-400 mb-2">
+              Select Process Type
+            </label>
+            <select
+              id="processType"
+              value={activeProcessType || ''}
+              onChange={(e) => setActiveProcessType(e.target.value || null)}
+              className="bg-gray-700 border border-gray-600 rounded-md px-3 py-2 text-white w-full max-w-md"
+            >
+              {violation.process_types_affected.map((process) => (
+                <option key={process.id} value={process.processType}>
+                  {process.processType}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Tab Content */}
         <div className="mt-8">
           {activeTab === 'overview' && <ViolationOverview violation={violation} />}
           {activeTab === 'process-analysis' && (
-            <ProcessAnalysis processTypes={violation.process_types_affected} />
+            <ProcessAnalysis 
+              processTypes={violation.process_types_affected} 
+              activeProcessType={activeProcessType}
+            />
           )}
           {activeTab === 'corrective-actions' && (
-            <CorrectiveActions processTypes={violation.process_types_affected} />
+            <CorrectiveActions 
+              processTypes={violation.process_types_affected} 
+              activeProcessType={activeProcessType}
+            />
           )}
         </div>
       </div>

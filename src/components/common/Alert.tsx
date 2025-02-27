@@ -1,17 +1,35 @@
 import React from 'react';
-import { AlertCircle, CheckCircle, X } from 'lucide-react';
+import { AlertCircle, CheckCircle, AlertTriangle, X } from 'lucide-react';
 
 interface AlertProps {
-  type: 'success' | 'error';
+  type: 'success' | 'error' | 'warning';
   message: string;
   onClose?: () => void;
 }
 
 export default function Alert({ type, message, onClose }: AlertProps) {
-  const bgColor = type === 'success' ? 'bg-green-400/10' : 'bg-red-400/10';
-  const borderColor = type === 'success' ? 'border-green-400/20' : 'border-red-400/20';
-  const textColor = type === 'success' ? 'text-green-400' : 'text-red-400';
-  const Icon = type === 'success' ? CheckCircle : AlertCircle;
+  let bgColor, borderColor, textColor, Icon;
+
+  switch (type) {
+    case 'success':
+      bgColor = 'bg-green-400/10';
+      borderColor = 'border-green-400/20';
+      textColor = 'text-green-400';
+      Icon = CheckCircle;
+      break;
+    case 'warning':
+      bgColor = 'bg-yellow-400/10';
+      borderColor = 'border-yellow-400/20';
+      textColor = 'text-yellow-400';
+      Icon = AlertTriangle;
+      break;
+    case 'error':
+    default:
+      bgColor = 'bg-red-400/10';
+      borderColor = 'border-red-400/20';
+      textColor = 'text-red-400';
+      Icon = AlertCircle;
+  }
 
   return (
     <div className={`p-4 rounded-lg border ${bgColor} ${borderColor} ${textColor}`}>

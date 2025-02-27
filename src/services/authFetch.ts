@@ -11,12 +11,10 @@ export class RateLimitError extends Error {
 export const authFetch = async (url: string, options: RequestInit = {}) => {
   const token = auth.getToken();
   
-  // console.log('auth.getToken():', auth.getToken());
-
-  // if (!token || token.trim() === '') {
-  //   console.error('Token is missing or invalid.');
-  //   return Promise.reject(new Error('No authentication token found.'));
-  // } 
+  if (!token || token.trim() === '') {
+    console.error('Token is missing or invalid.');
+    return Promise.reject(new Error('No authentication token found.'));
+  } 
   if (!token) {
     auth.logout(); // Logout if token is missing
     return Promise.reject(new Error("No authentication token found."));
@@ -26,9 +24,21 @@ export const authFetch = async (url: string, options: RequestInit = {}) => {
   const headers = new Headers(options.headers || {});
   headers.set('Authorization', `Bearer ${token}`);
   headers.set('Content-Type', 'application/json');
+  
+  // For debugging - log the request
+  console.log('Making request to:', url);
+  console.log('With headers:', Object.fromEntries(headers.entries()));
 
   try {
-    const response = await fetch(url, { ...options, headers });
+    const response = await fetch(url, { 
+      ...options, 
+      headers,
+      // Add credentials for cookies if needed
+      credentials: 'include'  
+    });
+
+    console.log('Response status:', response.status);
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
     if (response.status === 401) {
       auth.logout(); // Logout if token is invalid
@@ -51,7 +61,15 @@ export const authFetch = async (url: string, options: RequestInit = {}) => {
     if (error instanceof RateLimitError) {
       throw error; // Re-throw rate limit errors
     }
+    
+    // Log more details about the error
     console.error("Fetch error:", error);
+    console.error("Error details:", error instanceof Error ? error.message : 'Unknown error');
+    
+    if (error instanceof TypeError && error.message.includes('NetworkError')) {
+      console.error("This might be a CORS issue. Check server CORS configuration.");
+    }
+    
     return Promise.reject(error);
   }
 };

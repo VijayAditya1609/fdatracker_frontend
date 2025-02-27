@@ -8,6 +8,7 @@ export interface FilterResponse {
   system: string[];
   subsystem: string[];
   status: string[];
+  hasForm483: string[];
 }
 
 export interface UseFiltersResult {
@@ -32,7 +33,8 @@ export function useFilters(pageName: string, options: UseFiltersOptions = {}): U
     year: '',
     system: '',
     subsystem: '',
-    status: ''
+    status: '',
+    hasForm483: ''
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +52,8 @@ export function useFilters(pageName: string, options: UseFiltersOptions = {}): U
           year: response.year || [],
           system: response.system || [],
           subsystem: response.subsystem || [],
-          status: response.status || []
+          status: response.status || [],
+          hasForm483: response.hasForm483 || []
         };
         
         setFilters(normalizedFilters);

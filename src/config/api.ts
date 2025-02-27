@@ -1,14 +1,14 @@
 import { auth } from "../services/auth";
 
-export const API_BASE_URL = 'https://app.fdatracker.ai:9443';   //https://app.fdatracker.ai:9443
+export const API_BASE_URL = 'http://localhost:8080';   //https://app.fdatracker.ai:9443
 export const api = {
   // Auth endpoints
   signup: `${API_BASE_URL}/signUp`,
   login: `${API_BASE_URL}/api/login`,
   signupVerify: `${API_BASE_URL}/api/signup/verify`,
   signupProgress: `${API_BASE_URL}/api/signup-progress`,
-  forgotPassword: `${API_BASE_URL}/api/forgot-password`,
-  resetPassword: `${API_BASE_URL}/api/reset-password`,
+  forgotPassword: `${API_BASE_URL}/forgot-password`,
+  resetPassword: `${API_BASE_URL}/reset-password`,
   
   // Form 483 endpoints
   form483List: `${API_BASE_URL}/api/483List`,
@@ -16,6 +16,9 @@ export const api = {
   form483Request: `${API_BASE_URL}/api/form483-request`,
   observationDetail: `${API_BASE_URL}/api/ObservationDetail`,
   AuditReadinessChecklistForm483: `${API_BASE_URL}/api/AuditReadinessCheckListFor483`,
+
+  // My Form 483 endpoints
+  myForm483: `${API_BASE_URL}/api/myform483`,
   
   // Warning Letter endpoints
   warningLettersList: `${API_BASE_URL}/api/WlList`,

@@ -23,7 +23,7 @@ interface SidebarProps {
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { name: 'Advanced Search', href: '/search', icon: Search, comingSoon: false },
+  { name: 'Advanced Search', href: '/search', icon: Search },  
   { 
     name: 'FDA Actions',
     icon: ClipboardCheck,
@@ -37,8 +37,8 @@ const navigation = [
     name: 'Companies',
     icon: Building2,
     children: [
-      { name: 'Companies', href: '/companies', icon: Building2, comingSoon: false },
-      { name: 'Facilities', href: '/facilities', icon: Factory, comingSoon: false },
+      { name: 'Companies', href: '/companies', icon: Building2 },
+      { name: 'Facilities', href: '/facilities', icon: Factory },
     ],
   },
   {
@@ -48,7 +48,8 @@ const navigation = [
       { name: 'Six Systems', href: '/sixSystems', icon: SystemsIcon },
     ],
   },
-  { name: 'Investigators', href: '/investigators', icon: Users }
+  { name: 'Investigators', href: '/investigators', icon: Users },
+  { name: 'My Form 483s', href: '/my-form-483s', icon: ClipboardCheck },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
@@ -58,23 +59,23 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
   const isChildActive = (children: any[]) =>
     children?.some(child => location.pathname === child.href);
 
-  const ComingSoonLink = ({ item }: { item: any }) => (
-    <div className="relative group">
-      <div
-        className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg ${
-          isActive(item.href)
-            ? 'bg-gray-700/50 text-gray-400'
-            : 'text-gray-400 hover:bg-gray-700/30'
-        }`}
-      >
-        {item.icon && <item.icon className="mr-3 h-4 w-4" />}
-        {item.name}
-      </div>
-      <div className="absolute inset-0 bg-gray-800/80 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center">
-        <span className="text-yellow-400 text-sm font-medium">Coming Soon</span>
-      </div>
-    </div>
-  );
+  // const ComingSoonLink = ({ item }: { item: any }) => (
+  //   <div className="relative group">
+  //     <div
+  //       className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg ${
+  //         isActive(item.href)
+  //           ? 'bg-gray-700/50 text-gray-400'
+  //           : 'text-gray-400 hover:bg-gray-700/30'
+  //       }`}
+  //     >
+  //       {item.icon && <item.icon className="mr-3 h-4 w-4" />}
+  //       {item.name}
+  //     </div>
+  //     <div className="absolute inset-0 bg-gray-800/80 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center">
+  //       <span className="text-yellow-400 text-sm font-medium">Coming Soon</span>
+  //     </div>
+  //   </div>
+  // );
 
   // Sidebar content common for mobile and desktop
   const sidebarContent = (
@@ -94,21 +95,17 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
         {navigation.map((item) => (
           <div key={item.name}>
             {!item.children ? (
-              item.comingSoon ? (
-                <ComingSoonLink item={item} />
-              ) : (
-                <Link
-                  to={item.href}
-                  className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg ${
-                    isActive(item.href)
-                      ? 'bg-gray-700 text-white'
-                      : 'text-gray-300 hover:text-white hover:bg-gray-700'
-                  }`}
-                >
-                  <item.icon className="mr-3 h-5 w-5" />
-                  {item.name}
-                </Link>
-              )
+              <Link
+                to={item.href}
+                className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg ${
+                  isActive(item.href)
+                    ? 'bg-gray-700 text-white'
+                    : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                }`}
+              >
+                <item.icon className="mr-3 h-5 w-5" />
+                {item.name}
+              </Link>
             ) : (
               <div className="space-y-1">
                 <div
@@ -122,24 +119,20 @@ const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {
                   {item.name}
                 </div>
                 <div className="ml-4 space-y-1">
-                  {item.children.map((child) =>
-                    child.comingSoon ? (
-                      <ComingSoonLink key={child.name} item={child} />
-                    ) : (
-                      <Link
-                        key={child.name}
-                        to={child.href}
-                        className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg ${
-                          isActive(child.href)
-                            ? 'bg-gray-700 text-white'
-                            : 'text-gray-300 hover:text-white hover:bg-gray-700'
-                        }`}
-                      >
-                        {child.icon && <child.icon className="mr-3 h-4 w-4" />}
-                        {child.name}
-                      </Link>
-                    )
-                  )}
+                  {item.children.map((child) => (
+                    <Link
+                      key={child.name}
+                      to={child.href}
+                      className={`flex items-center px-4 py-2 text-sm font-medium rounded-lg ${
+                        isActive(child.href)
+                          ? 'bg-gray-700 text-white'
+                          : 'text-gray-300 hover:text-white hover:bg-gray-700'
+                      }`}
+                    >
+                      {child.icon && <child.icon className="mr-3 h-4 w-4" />}
+                      {child.name}
+                    </Link>
+                  ))}
                 </div>
               </div>
             )}

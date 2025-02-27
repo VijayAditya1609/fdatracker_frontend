@@ -1,5 +1,5 @@
 export interface InvestigatorListItem {
-  investigator_id: string;
+  id: string;
   investigator_name: string;
   warning_letter_count: string;
   investigator_count: string;

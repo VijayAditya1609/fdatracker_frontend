@@ -8,14 +8,14 @@ import { useAuth } from "../contexts/AuthContext"; // Add this import
 import { authFetch } from "../services/authFetch";
 
 
-const stripePromise = loadStripe("pk_live_51O1KlFGzSCaeO8GuyDU6FCasEFahkJMJSrsR21ZfyqDvjnYNjRYHViWu3KwCAR54QcWatqZXWmoFloU38MHlxk0H00z2xvt17o");
+const stripePromise = loadStripe("pk_test_51QoPQkABdlZIgPfDQiCTtVs7rOSmkVVnDAElaH0G6bUDjLIfjw61G030JRzp4XAk8i0NmP1EbjzYL3zHWebk8rWe00zR5jJljz");
 
 export default function Subscription() {
   const { user } = useAuth(); // Get user from auth context
 
   const handleUpgrade = async (plan: string) => {
     try {
-      const priceId = "price_1Qw3qgGzSCaeO8Gu9NEC202y";
+      const priceId = "price_1QofwvABdlZIgPfDT6LF5XGl";
       const response = await authFetch(api.createCheckoutSession, {
         method: "POST",
         body: JSON.stringify({ priceId }),
@@ -106,9 +106,9 @@ export default function Subscription() {
               </div>
               <div className="p-6">
                 <h3 className="text-xl font-semibold text-white">Elite Plan</h3>
-                <p className="mt-2 text-gray-400">Advanced features for Elite users</p>
+                <p className="mt-2 text-gray-400">Advanced features for power users</p>
                 <p className="mt-4">
-                  <span className="text-3xl font-bold text-white">$50</span>
+                  <span className="text-3xl font-bold text-white">$49</span>
                   <span className="text-gray-400 ml-2">/month</span>
                 </p>
                 {renderPlanButton('elite')}

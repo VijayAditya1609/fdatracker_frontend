@@ -6,6 +6,8 @@ export interface FilterResponse {
   year: string[];
   system: string[];
   subsystem: string[];
+  hasForm483: string[];
+  status: string[];
 }
 
 export async function getFilters(pageName: string): Promise<FilterResponse> {

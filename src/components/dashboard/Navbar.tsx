@@ -4,7 +4,7 @@ import { LogOut, MessageCircle, X, Menu } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import Logo from "../landing/Logo";
 import { auth } from "../../services/auth";
-import { SubscriptionButton } from "./SubscriptionButton";
+// import { SubscriptionButton } from "./SubscriptionButton";
 import { api } from "../../config/api";
 import { authFetch } from "../../services/authFetch";
 
@@ -122,7 +122,7 @@ const Navbar: React.FC<NavbarProps> = ({ onSidebarToggle }) => {
                       </div>
 
                       <div className="pt-4 space-y-2">
-                        <SubscriptionButton />
+                        {/* <SubscriptionButton /> */}
                         <button
                           onClick={handleLogout}
                           className="w-full flex items-center px-4 py-2 text-sm text-red-400 hover:bg-gray-700 rounded-lg"

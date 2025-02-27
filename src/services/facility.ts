@@ -33,7 +33,7 @@ export interface ProcessTypesCount {
 }
 
 export interface Form483AndWL {
-  facilitiesInspectionsList483: Array<{
+  facilitiesInspectionsList483: Array<{  
     company_affected: string;
     inspection_dates: string;
     feinumber: string;
@@ -43,7 +43,7 @@ export interface Form483AndWL {
     url: string;
     producttype: string;
   }>;
-  facilitiesInspectionsListWl: Array<{
+  facilitiesInspectionsListWl: Array<{ 
     company_affected: string;
     inspection_dates: string;
     feinumber2: string;

@@ -17,7 +17,7 @@ export default function ViolationCard({ violation, warningLetterId }: ViolationC
 
   return (
     <div
-      className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden cursor-pointer hover:border-gray-600 transition-colors"
+      className="bg-gray-800 hover:bg-gray-700 transition-transform transform hover:scale-[1.02] shadow-md hover:shadow-lg rounded-lg border border-gray-700 overflow-hidden cursor-pointer hover:border-gray-600 transition-colors"
       onClick={handleCardClick}
     >
       <div className="p-6">

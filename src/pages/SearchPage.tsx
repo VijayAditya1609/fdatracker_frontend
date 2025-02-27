@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search as SearchIcon, Filter, Tag, Building2, FileText, AlertTriangle, Package, Factory, X,LucideIcon, ChevronDown, Clock, AlertCircle, TrendingUp, Calendar, MapPin, Users, FileWarning, Activity, Loader2, ChevronLeft, ChevronRight, FilterIcon, XCircle } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search as SearchIcon, Filter, Tag, Building2, FileText, AlertTriangle, Package, Factory, X, LucideIcon, ChevronDown, Clock, AlertCircle, TrendingUp, Calendar, MapPin, Users, FileWarning, Activity, Loader2, ChevronLeft, ChevronRight, FilterIcon, XCircle } from 'lucide-react';
 import DashboardLayout from '../components/layouts/DashboardLayout';
 import { useAdvancedFilters } from '../hooks/useAdvancedFilters';
 import { Link } from 'react-router-dom';
@@ -9,6 +9,9 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../config/api';
 import { auth } from '../services/auth';
 import { authFetch } from '../services/authFetch';
+import ReactGA from "react-ga4";
+import { debounce } from 'lodash'; // Add this import
+import { trackEvent } from "../utils/analytics";
 
 interface SearchResult {
   id: string;
@@ -28,9 +31,19 @@ interface SearchResult {
   };
 }
 
+// Define a type for the filters
+type SearchFilters = {
+  documentType: string[];
+  year: string[];
+  qualitySystem: string[];
+  region: string[];
+  subSystem: string[];
+  productType: string[];
+};
+
 export default function SearchPage() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFilters, setSelectedFilters] = useState({
+  const [selectedFilters, setSelectedFilters] = useState<SearchFilters>({
     documentType: ['all'],
     year: ['all'],
     qualitySystem: ['all'],
@@ -51,45 +64,116 @@ export default function SearchPage() {
   const [totalResults, setTotalResults] = useState({ form483: 0, warningLetters: 0 });
   const ITEMS_PER_PAGE = 20;
 
-  // Handle filter changes
-  const handleFilterChange = (filterType: string, value: string) => {
-    setSelectedFilters(prev => {
-      const currentFilters = prev[filterType as keyof typeof prev];
-
-      let updatedFilters;
-      if (value === 'all') {
-        updatedFilters = {
-          ...prev,
-          [filterType]: ['all'],
-        };
-      } else {
-        const newTypeFilters = currentFilters.includes(value)
-          ? currentFilters.filter(item => item !== value)
-          : [...currentFilters.filter(item => item !== 'all'), value];
-
-        updatedFilters = {
-          ...prev,
-          [filterType]: newTypeFilters.length === 0 ? ['all'] : newTypeFilters,
-        };
+  const trackFilterUsage = (category: string, filters: SearchFilters) => {
+    Object.entries(filters).forEach(([key, values]) => {
+      // Ensure values is an array and has valid entries
+      if (Array.isArray(values) && values.length > 0) {
+        // Only track if filters are not set to 'all'
+        if (!values.includes('all') || values.length > 1) {
+          values.forEach(value => {
+            if (value !== 'all') {
+              // ReactGA.event({
+              //   category: category,
+              //   action: `Filter Applied: ${key}`,
+              //   label: value,
+              // });
+              trackEvent(category,`Filter Applied: ${key}`, value);
+            }
+          });
+        }
       }
-
-      // Store updated filters in session storage
-      storeFiltersInSession(updatedFilters);
-      return updatedFilters;
     });
   };
+
+  const trackSearchQuery = (query: string) => {
+    if (query && query.trim()) {
+      // ReactGA.event({
+      //   category: "Advanced Search Filter",
+      //   action: "Search Query",
+      //   label: query.trim().toLowerCase(),
+      // });
+
+
+      trackEvent("Advanced Search Filter", "Search Query", query.trim().toLowerCase());
+
+    }
+  };
+
+  // Function to store filters in session storage
+  const storeFiltersInSession = (filters: SearchFilters) => {
+    sessionStorage.setItem('lastAppliedFilters', JSON.stringify(filters));
+  };
+
+  // Create a debounced search function
+  const debouncedSearch = useCallback(
+    debounce((query: string, filters: SearchFilters, page: number) => {
+      const hasActiveFilters = Object.entries(filters).some(([_, values]) => {
+        return !values.includes('all') || values.length > 1;
+      });
+
+      if (query.trim() || hasActiveFilters) {
+        setIsSearching(true);
+        setSearchError(null);
+
+        const start = (page - 1) * ITEMS_PER_PAGE;
+        searchData(query.trim(), filters, start, ITEMS_PER_PAGE)
+          .then(results => {
+            setSearchResults(results);
+            setTotalResults({
+              form483: results.totalForm483,
+              warningLetters: results.totalWarningLetters
+            });
+
+            // Track search analytics
+            if (query.trim()) {
+              trackSearchQuery(query);
+            }
+            if (hasActiveFilters) {
+              trackFilterUsage("Advanced Search Filter", filters);
+            }
+
+            // If no results on current page, find the last page with results
+            if (results.form483.length === 0 && results.warningLetters.length === 0 && page > 1) {
+              // ReactGA.event({
+              //   category: "Advanced Search Filter",
+              //   action: "No Results",
+              //   label: query,
+              // });
+              trackEvent("Advanced Search Filter", "No Results", query);
+
+              const totalItems = Math.max(results.totalForm483, results.totalWarningLetters);
+              const lastPage = Math.ceil(totalItems / ITEMS_PER_PAGE);
+              if (lastPage < page) {
+                setCurrentPage(lastPage);
+                // No need to call handleSearch again, as changing currentPage will trigger the effect
+              }
+            }
+          })
+          .catch(error => {
+            console.error('Search error:', error);
+            setSearchError(error instanceof Error ? error.message : 'Failed to perform search');
+          })
+          .finally(() => {
+            setIsSearching(false);
+          });
+      } else {
+        resetToDefaultView();
+      }
+    }, 300), // 300ms debounce time
+    []
+  );
 
   // Function to reset to default view
   const resetToDefaultView = async () => {
     setSearchResults(null);
     setIsLoadingTop(true);
-  
+
     try {
       const [form483Data, wlData] = await Promise.all([
         authFetch(`${api.form483List}?start=0&length=5`).then(res => res.json()),
         authFetch(`${api.warningLettersList}?start=0&length=5`).then(res => res.json())
       ]);
-  
+
       setTopForm483s(form483Data);
       setTopWarningLetters(wlData);
     } catch (error) {
@@ -98,7 +182,38 @@ export default function SearchPage() {
       setIsLoadingTop(false);
     }
   };
-  
+
+  // Improved filter change handler
+  const handleFilterChange = (filterType: string, value: string) => {
+    setSelectedFilters(prev => {
+      const currentFilters = prev[filterType as keyof typeof prev];
+
+      let updatedFilters: SearchFilters;
+      if (value === 'all') {
+        updatedFilters = {
+          ...prev,
+          [filterType]: ['all'],
+        } as SearchFilters;
+      } else {
+        const newTypeFilters = currentFilters.includes(value)
+          ? currentFilters.filter(item => item !== value)
+          : [...currentFilters.filter(item => item !== 'all'), value];
+
+        updatedFilters = {
+          ...prev,
+          [filterType]: newTypeFilters.length === 0 ? ['all'] : newTypeFilters,
+        } as SearchFilters;
+      }
+
+      // Store updated filters in session storage
+      storeFiltersInSession(updatedFilters);
+
+      // Reset to first page when filters change
+      setCurrentPage(1);
+
+      return updatedFilters;
+    });
+  };
 
   // Modified clear filters handler
   const handleClearFilters = () => {
@@ -110,17 +225,12 @@ export default function SearchPage() {
       subSystem: ['all'],
       productType: ['all']
     };
-    
+
     setSelectedFilters(defaultFilters);
     sessionStorage.removeItem('lastAppliedFilters');
+    setCurrentPage(1);
 
-    // If there's no search query, reset to default view
-    if (!searchQuery.trim()) {
-      resetToDefaultView();
-    } else {
-      // If there's a search query, perform search with cleared filters
-      handleSearch();
-    }
+    // The effect will handle the search or resetting to default view
   };
 
   // Add this function to handle category expansion
@@ -137,7 +247,7 @@ export default function SearchPage() {
     const newQuery = e.target.value;
     setSearchQuery(newQuery);
     setCurrentPage(1); // Reset to first page when search query changes
-    
+
     // Only store non-empty queries in session storage
     if (newQuery.trim()) {
       sessionStorage.setItem('lastSearchQuery', newQuery);
@@ -146,68 +256,40 @@ export default function SearchPage() {
     }
   };
 
-  // Add this function to store filters in session storage
-  const storeFiltersInSession = (filters: typeof selectedFilters) => {
-    sessionStorage.setItem('lastAppliedFilters', JSON.stringify(filters));
-  };
-
-  // Modified search handler to handle empty results better
-  const handleSearch = async (page: number = currentPage) => {
-    setIsSearching(true);
-    setSearchError(null);
-
-    try {
-      const start = (page - 1) * ITEMS_PER_PAGE;
-      const results = await searchData(
-        searchQuery.trim(),
-        selectedFilters,
-        start,
-        ITEMS_PER_PAGE
-      );
-      setSearchResults(results);
-      setTotalResults({
-        form483: results.totalForm483,
-        warningLetters: results.totalWarningLetters
-      });
-
-      // If no results on current page, find the last page with results
-      if (results.form483.length === 0 && results.warningLetters.length === 0 && page > 1) {
-        const totalItems = Math.max(results.totalForm483, results.totalWarningLetters);
-        const lastPage = Math.ceil(totalItems / ITEMS_PER_PAGE);
-        if (lastPage < page) {
-          handlePageChange(lastPage);
-        }
-      }
-    } catch (error) {
-      console.error('Search error:', error);
-      setSearchError(error instanceof Error ? error.message : 'Failed to perform search');
-    } finally {
-      setIsSearching(false);
-    }
+  // Simplified search handler that uses the debounced function
+  const handleSearch = (page: number = currentPage) => {
+    debouncedSearch(searchQuery, selectedFilters, page);
   };
 
   // Handle page change with smooth scroll
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
-    handleSearch(newPage);
+
     // Smooth scroll to top of results
     document.querySelector('.scrollable-results')?.scrollTo({
       top: 0,
       behavior: 'smooth'
     });
+
+    // The effect will handle the search
   };
 
-  // Modified useEffect to handle search and filter changes
+  // Simplified useEffect for search
   useEffect(() => {
-    // Only trigger search if we have filters selected other than 'all'
+    handleSearch(currentPage);
+  }, [currentPage]);
+
+  // New separate effect to handle filter changes
+  useEffect(() => {
+    // Only trigger if not the initial render (need to check if filters are actually changed)
     const hasActiveFilters = Object.entries(selectedFilters).some(([_, values]) => {
       return !values.includes('all') || values.length > 1;
     });
 
     if (searchQuery.trim() || hasActiveFilters) {
-      handleSearch();
+      // Always use currentPage here, as we reset it in handleFilterChange
+      handleSearch(currentPage);
     } else {
-      // If no search query and no active filters, show default view
       resetToDefaultView();
     }
   }, [
@@ -229,7 +311,7 @@ export default function SearchPage() {
           authFetch(`${api.form483List}?start=0&length=5`).then(res => res.json()),
           authFetch(`${api.warningLettersList}?start=0&length=5`).then(res => res.json())
         ]);
-  
+
         setTopForm483s(form483Data);
         setTopWarningLetters(wlData);
       } catch (error) {
@@ -238,33 +320,36 @@ export default function SearchPage() {
         setIsLoadingTop(false);
       }
     };
-  
-    fetchTopDocuments();
-  }, []);
-  
 
-  // Add useEffect to restore search state from session storage
+    // Only fetch if we don't already have results
+    if (topForm483s.length === 0 && topWarningLetters.length === 0) {
+      fetchTopDocuments();
+    }
+  }, []);
+
+  // Add useEffect to restore search state from session storage - run only once on mount
   useEffect(() => {
     const lastQuery = sessionStorage.getItem('lastSearchQuery');
     const lastFilters = sessionStorage.getItem('lastAppliedFilters');
 
+    let shouldSearch = false;
+
     if (lastQuery && lastQuery.trim()) {
       setSearchQuery(lastQuery);
+      shouldSearch = true;
     }
 
     if (lastFilters) {
       try {
         const parsedFilters = JSON.parse(lastFilters);
         setSelectedFilters(parsedFilters);
+        shouldSearch = true;
       } catch (error) {
         console.error('Error parsing stored filters:', error);
       }
     }
 
-    // Only trigger search if we have a query or active filters
-    if (lastQuery?.trim() || lastFilters) {
-      handleSearch();
-    }
+    // Don't trigger a search here, the other effects will handle it
   }, []);
 
   const renderForm483Card = (item: any) => (
@@ -400,8 +485,8 @@ export default function SearchPage() {
     const totalPages = Math.ceil(
       Math.max(totalResults.form483, totalResults.warningLetters) / ITEMS_PER_PAGE
     );
-    
-    const hasMoreResults = searchResults && 
+
+    const hasMoreResults = searchResults &&
       (searchResults.form483.length > 0 || searchResults.warningLetters.length > 0);
 
     // Don't show pagination if no results or only one page
@@ -418,7 +503,7 @@ export default function SearchPage() {
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            
+
             <span className="text-gray-300 text-sm px-2">
               <span className="font-medium">Page {currentPage}</span>
               {totalPages > 0 && <span className="text-gray-500"> of {totalPages}</span>}
@@ -447,13 +532,13 @@ export default function SearchPage() {
   const FilterButton = ({ categoryId, icon: Icon, label }: { categoryId: string; icon: LucideIcon; label: string }) => {
     const isExpanded = expandedCategories.includes(categoryId);
     const hasFilters = hasActiveFilters(categoryId);
-    
+
     return (
       <button
         onClick={() => toggleCategory(categoryId)}
         className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-gray-300 transition-colors
-          ${hasFilters 
-            ? 'bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30' 
+          ${hasFilters
+            ? 'bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30'
             : 'bg-gray-700 hover:bg-gray-600'}`}
       >
         <div className="flex items-center gap-3">
@@ -462,7 +547,7 @@ export default function SearchPage() {
             {label}
           </span>
         </div>
-        
+
         <div className="flex items-center gap-3 ml-2">
           {hasFilters && (
             <span className="text-xs bg-blue-500/30 text-blue-300 px-2.5 py-1 rounded-full flex items-center gap-1.5">
@@ -470,7 +555,7 @@ export default function SearchPage() {
               <FilterIcon className="h-3.5 w-3.5" />
             </span>
           )}
-          <ChevronDown 
+          <ChevronDown
             className={`h-4 w-4 transform transition-transform duration-200 
               ${isExpanded ? 'rotate-180' : ''} 
               ${hasFilters ? 'text-blue-400' : ''}`}
@@ -578,8 +663,8 @@ export default function SearchPage() {
                                        focus:ring-blue-500 focus:ring-offset-gray-800"
                             />
                             <span className={`ml-3 ${selectedFilters.documentType.includes(option)
-                                ? 'text-blue-400'
-                                : 'text-gray-300'
+                              ? 'text-blue-400'
+                              : 'text-gray-300'
                               }`}>
                               {option}
                             </span>
@@ -613,8 +698,8 @@ export default function SearchPage() {
                                        focus:ring-blue-500 focus:ring-offset-gray-800"
                             />
                             <span className={`ml-3 ${selectedFilters.year.includes(option)
-                                ? 'text-blue-400'
-                                : 'text-gray-300'
+                              ? 'text-blue-400'
+                              : 'text-gray-300'
                               }`}>
                               {option}
                             </span>
@@ -648,8 +733,8 @@ export default function SearchPage() {
                                        focus:ring-blue-500 focus:ring-offset-gray-800"
                             />
                             <span className={`ml-3 ${selectedFilters.qualitySystem.includes(option)
-                                ? 'text-blue-400'
-                                : 'text-gray-300'
+                              ? 'text-blue-400'
+                              : 'text-gray-300'
                               }`}>
                               {option}
                             </span>
@@ -683,8 +768,8 @@ export default function SearchPage() {
                                        focus:ring-blue-500 focus:ring-offset-gray-800"
                             />
                             <span className={`ml-3 ${selectedFilters.region.includes(option)
-                                ? 'text-blue-400'
-                                : 'text-gray-300'
+                              ? 'text-blue-400'
+                              : 'text-gray-300'
                               }`}>
                               {option}
                             </span>
@@ -723,11 +808,10 @@ export default function SearchPage() {
                                       focus:ring-blue-500 focus:ring-offset-gray-800"
                             />
                             <span
-                              className={`ml-3 ${
-                                selectedFilters.subSystem.includes(option)
-                                  ? 'text-blue-400'
-                                  : 'text-gray-300'
-                              }`}
+                              className={`ml-3 ${selectedFilters.subSystem.includes(option)
+                                ? 'text-blue-400'
+                                : 'text-gray-300'
+                                }`}
                             >
                               {option}
                             </span>
@@ -761,11 +845,10 @@ export default function SearchPage() {
                                        focus:ring-blue-500 focus:ring-offset-gray-800"
                             />
                             <span
-                              className={`ml-3 ${
-                                selectedFilters.productType.includes(option)
-                                  ? 'text-blue-400'
-                                  : 'text-gray-300'
-                              }`}
+                              className={`ml-3 ${selectedFilters.productType.includes(option)
+                                ? 'text-blue-400'
+                                : 'text-gray-300'
+                                }`}
                             >
                               {option}
                             </span>
@@ -801,8 +884,8 @@ export default function SearchPage() {
                   {searchError}
                 </div>
               ) : searchResults ? (
-                searchResults.form483.length === 0 && 
-                searchResults.warningLetters.length === 0 ? (
+                searchResults.form483.length === 0 &&
+                  searchResults.warningLetters.length === 0 ? (
                   <NoResultsMessage />
                 ) : (
                   <div className="space-y-6">
@@ -966,44 +1049,44 @@ export default function SearchPage() {
                 )
               ) : (
                 <div className="space-y-8">
-                {/* Top Form 483s */}
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-medium text-white">Recent Form 483s</h3>
-                    <Link to="/form-483s" className="text-sm text-blue-400 hover:text-blue-300">
-                      View all
-                    </Link>
+                  {/* Top Form 483s */}
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-medium text-white">Recent Form 483s</h3>
+                      <Link to="/form-483s" className="text-sm text-blue-400 hover:text-blue-300">
+                        View all
+                      </Link>
+                    </div>
+                    {isLoadingTop ? (
+                      <div className="flex justify-center items-center py-12">
+                        <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6">
+                        {topForm483s.map(renderForm483Card)}
+                      </div>
+                    )}
                   </div>
-                  {isLoadingTop ? (
-                    <div className="flex justify-center items-center py-12">
-                      <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
+
+                  {/* Top Warning Letters */}
+                  <div>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-medium text-white">Recent Warning Letters</h3>
+                      <Link to="/warning-letters" className="text-sm text-blue-400 hover:text-blue-300">
+                        View all
+                      </Link>
                     </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6">
-                      {topForm483s.map(renderForm483Card)}
-                    </div>
-                  )}
-                </div>
-    
-                {/* Top Warning Letters */}
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-medium text-white">Recent Warning Letters</h3>
-                    <Link to="/warning-letters" className="text-sm text-blue-400 hover:text-blue-300">
-                      View all
-                    </Link>
+                    {isLoadingTop ? (
+                      <div className="flex justify-center items-center py-12">
+                        <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6">
+                        {topWarningLetters.map(renderWarningLetterCard)}
+                      </div>
+                    )}
                   </div>
-                  {isLoadingTop ? (
-                    <div className="flex justify-center items-center py-12">
-                      <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6">
-                      {topWarningLetters.map(renderWarningLetterCard)}
-                    </div>
-                  )}
                 </div>
-              </div>
               )}
             </div>
           </div>

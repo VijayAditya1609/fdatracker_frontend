@@ -23,6 +23,12 @@ interface User {
   isSubscribed: boolean;
 }
 
+interface PasswordResetResponse {
+  redirect: string;
+  message: string;
+  status: string;
+}
+
 const TOKEN_KEY = 'authToken';
 const USER_KEY = 'user';
 
@@ -108,6 +114,72 @@ export const auth = {
     window.location.href = '/';
   },
 
+  forgotPassword: async (email: string, recaptchaToken: string): Promise<PasswordResetResponse> => {
+    const response = await fetch(`${API_BASE_URL}/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email,
+        "g-recaptcha-response": recaptchaToken,
+      }),
+    });
+
+    let data: PasswordResetResponse;
+    try {
+      data = await response.json();
+    } catch (err) {
+      throw new Error('Invalid response from server.');
+    }
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Password reset request failed');
+    }
+
+    return data;
+  },
+
+  resetPassword: async (
+    token: string, 
+    newPassword: string, 
+    confirmPassword: string,
+    recaptchaToken?: string // Make recaptchaToken optional
+  ): Promise<PasswordResetResponse> => {
+    if (newPassword !== confirmPassword) {
+      throw new Error('Passwords do not match');
+    }
+
+    // Prepare the request body - only include recaptcha if provided
+    const requestBody: any = {
+      token,
+      password: newPassword,
+      confirmPassword
+    };
+
+    // Only add recaptcha token if it's provided and not empty
+    if (recaptchaToken) {
+      requestBody["g-recaptcha-response"] = recaptchaToken;
+    }
+
+    const response = await fetch(`${API_BASE_URL}/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(requestBody)
+    });
+
+    let data: PasswordResetResponse;
+    try {
+      data = await response.json();
+    } catch (err) {
+      throw new Error('Invalid response from server.');
+    }
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Password reset failed');
+    }
+
+    return data;
+  },
+
   setSession: (token: string) => {
     try {
       const tokenParts = token.split('.');
@@ -120,7 +192,6 @@ export const auth = {
     }
   },
   
-
   getToken: (): string | null => {
     return localStorage.getItem(TOKEN_KEY);
   },

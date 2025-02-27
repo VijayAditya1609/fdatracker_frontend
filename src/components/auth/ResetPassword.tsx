@@ -1,7 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { auth } from '../../services/auth';
 import { Loader2 } from 'lucide-react';
+
+declare global {
+  interface Window {
+    grecaptcha: any;
+  }
+}
 
 const ResetPassword: React.FC = () => {
   const [password, setPassword] = useState('');
@@ -12,6 +18,30 @@ const ResetPassword: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
+  const [recaptchaReady, setRecaptchaReady] = useState(false);
+
+   // Load reCAPTCHA dynamically
+   useEffect(() => {
+    const loadRecaptcha = () => {
+      if (window.grecaptcha) {
+        window.grecaptcha.ready(() => {
+          console.log('reCAPTCHA loaded successfully');
+          setRecaptchaReady(true);
+        });
+      } else {
+        console.error('Failed to load reCAPTCHA.');
+      }
+    };
+
+    // Dynamically add reCAPTCHA script
+    const script = document.createElement('script');
+    script.src = 'https://www.google.com/recaptcha/api.js?render=6Lc9ktMqAAAAAL7tiKaCfrUr2NkaMgrlsoKsCgJN';
+    script.async = true;
+    script.defer = true;
+    script.onload = loadRecaptcha;
+
+    document.head.appendChild(script);
+  }, []);
 
   const validatePassword = (password: string): boolean => {
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
@@ -36,16 +66,25 @@ const ResetPassword: React.FC = () => {
     }
 
     setIsLoading(true);
-    setError('');
+    setError(''); 
     setMessage('');
 
     try {
-      const response = await auth.resetPassword(token, password, confirmPassword);
-      setMessage(response);
+      if (!recaptchaReady || !window.grecaptcha) {
+        throw new Error('reCAPTCHA is not loaded yet. Please try again.');
+      }
+
+      // Execute reCAPTCHA and get token
+      const recaptchaToken = await window.grecaptcha.execute('6Lc9ktMqAAAAAL7tiKaCfrUr2NkaMgrlsoKsCgJN', { action: 'reset_password' });
+
+      // Send reset password request with reCAPTCHA token
+      const response = await auth.resetPassword(token, password, confirmPassword, recaptchaToken);
+      
+      setMessage(response.message);
       setPassword('');
       setConfirmPassword('');
       setTimeout(() => {
-        navigate('/');
+        navigate(response.redirect || '/');
       }, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');

@@ -26,8 +26,11 @@ const ForgotPassword: React.FC = () => {
     setMessage('');
 
     try {
-      const message = await auth.forgotPassword(email);
-      setMessage(message);
+      // Execute reCAPTCHA and get token
+      const recaptchaToken = await window.grecaptcha.execute('6Lc9ktMqAAAAAL7tiKaCfrUr2NkaMgrlsoKsCgJN', { action: 'reset_password' });
+      const response = await auth.forgotPassword(email, recaptchaToken);
+      // Extract just the message string from the response object
+      setMessage(response.message);
       setEmail('');
     } catch (err) {
       if (err instanceof Error) {

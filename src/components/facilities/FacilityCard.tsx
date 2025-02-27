@@ -2,6 +2,8 @@ import React from 'react';
 import { Building2, MapPin, FileText, Activity, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Facility } from '../../types/facility';
+import ReactGA from "react-ga4";
+import { trackEvent } from "../../utils/analytics";
 
 interface FacilityCardProps {
   facility: Facility;
@@ -22,6 +24,13 @@ export default function FacilityCard({ facility }: FacilityCardProps) {
   };
 
   const handleCardClick = () => {
+    // ReactGA.event({
+    //   category: "Facilities",
+    //   action: "Item Click",
+    //   label: `Facility Feinumber: ${facility.feiNumber} : ${facility.name}`
+    // });
+    trackEvent("Facilities", "Item Click", `Facility Feinumber: ${facility.feiNumber} : ${facility.name}`);
+
     navigate(`/facilities/${facility.feiNumber}`, {
       state: { facilityName: facility.name }
     });

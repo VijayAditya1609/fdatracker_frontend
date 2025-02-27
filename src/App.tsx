@@ -5,7 +5,7 @@ import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import TroubleLoggingIn from './components/auth/TroubleLoggingIN';
 import DashboardPage from './pages/DashboardPage';
-import CompanyComparisonPage from './pages/CompanyComparisonPage';
+// import CompanyComparisonPage from './pages/CompanyComparisonPage';
 import Form483sPage from './pages/Form483sPage';
 import WarningLettersPage from './pages/WarningLettersPage';
 import InspectionsPage from './pages/InspectionsPage';
@@ -40,6 +40,7 @@ import { initGA, logPageView } from './utils/analytics';
 import Subscription from './pages/Subscription.tsx';
 import Success from './pages/Success.tsx';
 import Canceled from './pages/Canceled.tsx';
+import MyForm483 from './pages/MyForm483Page.tsx';
 
 
 // Create a separate component for routes that needs access to location
@@ -104,6 +105,13 @@ function AppRoutes() {
             <ObservationDetailPage />
           </ProtectedRoute>
         } />
+
+        <Route path="/my-form-483s" element={
+          <ProtectedRoute>
+            <MyForm483 />
+          </ProtectedRoute>
+        } />
+        
         <Route path="/warning-letters" element={
           <ProtectedRoute>
             <WarningLettersPage />
@@ -140,11 +148,11 @@ function AppRoutes() {
             <CompanyDetailsPage />
           </ProtectedRoute>
         } />
-        <Route path="/company-comparison" element={
+        {/* <Route path="/company-comparison" element={
           <ProtectedRoute>
             <CompanyComparisonPage />
           </ProtectedRoute>
-        } />
+        } /> */}
         <Route path="/facilities" element={
           <ProtectedRoute>
             <FacilitiesPage />
@@ -218,12 +226,20 @@ function AppRoutes() {
 
 function App() {
   useEffect(() => {
-    // Initialize GA only once when the app loads
     try {
-      initGA('G-7D90LTLKZJ');
-      console.log('GA initialization attempted');
+      const user = JSON.parse(localStorage.getItem("user") || "{}"); // Default to empty object if null
+
+      if (user?.email?.endsWith("@leucinetech.com")) {
+        console.log("GA page tracking skipped for LeucineTech users.");
+        return; // Skip GA initialization for LeucineTech users
+      }
+
+      initGA("G-7D90LTLKZJ");
+      // console.log("GA initialization attempted");
+
+      logPageView(window.location.pathname, document.title); // Log page view for other users
     } catch (error) {
-      console.error('Error in GA initialization:', error);
+      console.error("Error in GA initialization:", error);
     }
   }, []);
 

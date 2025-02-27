@@ -121,47 +121,44 @@ export default function Form483DetailsPage() {
                 <h1 className="text-2xl font-semibold text-white">
                   Form 483 Details
                 </h1>
-                <span className="inline-flex items-center rounded-full bg-blue-400/10 px-3 py-1 text-sm font-medium text-blue-400">
-                  {form483Data.form483Details.pdfId}
-                </span>
               </div>
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-3 mt-4 sm:mt-0">
-          <button
-  onClick={async () => {
-    try {
-      const path = form483Data.form483Details.url;
-      console.log('Form 483 Path:', path);
-      if (!path) {
-        console.error('Path is missing');
-        return;
-      }
-      const token = auth.getToken();
-      console.log('Token being sent:', token);
+            <button
+              onClick={async () => {
+                try {
+                  const path = form483Data.form483Details.url;
+                  console.log('Form 483 Path:', path);
+                  if (!path) {
+                    console.error('Path is missing');
+                    return;
+                  }
+                  const token = auth.getToken();
+                  console.log('Token being sent:', token);
 
-      const response = await authFetch(`${api.viewFile}?path=${encodeURIComponent(path)}`);
-      console.log('Response status:', response.status);
+                  const response = await authFetch(`${api.viewFile}?path=${encodeURIComponent(path)}`);
+                  console.log('Response status:', response.status);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch Form 483');
-      }
+                  if (!response.ok) {
+                    throw new Error('Failed to fetch Form 483');
+                  }
 
-      // Convert the response to a Blob (assuming it's a PDF)
-      const blob = await response.blob();
-      // Create an object URL from the blob
-      const blobUrl = window.URL.createObjectURL(blob);
-      // Open the URL in a new tab
-      window.open(blobUrl, '_blank');
-    } catch (error) {
-      console.error('Error viewing Form 483:', error);
-    }
-  }}
-  className="inline-flex items-center justify-center px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg border border-gray-600 font-medium transition-colors"
->
-  <ExternalLink className="w-4 h-4 mr-2" />
-  View Form 483
-</button>
+                  // Convert the response to a Blob (assuming it's a PDF)
+                  const blob = await response.blob();
+                  // Create an object URL from the blob
+                  const blobUrl = window.URL.createObjectURL(blob);
+                  // Open the URL in a new tab
+                  window.open(blobUrl, '_blank');
+                } catch (error) {
+                  console.error('Error viewing Form 483:', error);
+                }
+              }}
+              className="inline-flex items-center justify-center px-4 py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg border border-gray-600 font-medium transition-colors"
+            >
+              <ExternalLink className="w-4 h-4 mr-2" />
+              View Form 483
+            </button>
 
 
             {form483Data.form483Details.warningLetterId > 0 && (

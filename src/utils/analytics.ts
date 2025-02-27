@@ -11,34 +11,33 @@ export const initGA = (measurementId: string) => {
 };
 
 // Track page views
-export const logPageView = (path: string, title: string) => {
-  try {
-    ReactGA.send({
-      hitType: 'pageview',
-      page: path,
-      title: title
-    });
-    console.log('Page view logged:', path);
-  } catch (error) {
-    console.error('Error logging page view:', error);
+export const logPageView = (path: string, title: string = "") => {
+  const user = JSON.parse(localStorage.getItem("user") || "{}"); // Default to empty object if null
+
+  if (user && user.email?.endsWith("@leucinetech.com")) {
+    console.log("GA page tracking skipped for LeucineTech users.");
+    return;
   }
+
+  ReactGA.send({ hitType: "pageview", page: path, title: title || document.title });
 };
 
-// Track filter usage - simplified version
-export const logFilterUsage = (filterName: string, value: string) => {
-  try {
-    ReactGA.event({
-      category: 'Filters',
-      action: 'Filter Used',
-      label: filterName,
-      params: {
-        filter_name: filterName,
-        filter_value: value,
-        page: 'inspections'
-      }
-    });
-    console.log('Filter tracked:', filterName, value);
-  } catch (error) {
-    console.error('Error tracking filter:', error);
+
+export const trackEvent = (category: string, action: string, label: string, value?: number | null): void => {
+  const user = JSON.parse(localStorage.getItem("user") || "{}"); // Default to empty object if null
+
+  if (user && user.email?.endsWith("@leucinetech.com")) {
+    // console.log("GA tracking skipped for LeucineTech users.");
+    return;
   }
+
+  const eventData: { category: string; action: string; label: string; value?: number } = { category, action, label };
+
+  if (typeof value === "number") {
+    eventData.value = value;
+  }
+
+  ReactGA.event(eventData);
 };
+
+

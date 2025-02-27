@@ -60,9 +60,12 @@ export default function InspectionCard({ inspection, onClick }: InspectionCardPr
     }
   };
   
+  const handleModalSubmit = async () => {
+    // This is just a placeholder since the original modal doesn't need to submit anything
+    console.log("Modal submit action placeholder");
+    return Promise.resolve();
+  };
   
-  
-
   const handleRequestSubmit = async () => {
     // if (!requestReason.trim()) {
     //   alert('Please provide a reason for your request');
@@ -190,8 +193,19 @@ export default function InspectionCard({ inspection, onClick }: InspectionCardPr
       <InspectionModal 
         isOpen={modalIsOpen} 
         onRequestClose={() => setModalIsOpen(false)} 
+        onSubmit={handleModalSubmit}
         title="Inspection Not Found" 
         content="No valid inspection data found for this entry." 
+      />
+      
+      {/* Request Modal */}
+      <InspectionModal 
+        isOpen={requestModalIsOpen} 
+        onRequestClose={() => setRequestModalIsOpen(false)} 
+        onSubmit={handleRequestSubmit}
+        isSubmitting={isSubmitting}
+        title="Request Form 483" 
+        content="Would you like to request this Form 483? Our team will review your request." 
       />
     </>
   );

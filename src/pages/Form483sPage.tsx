@@ -9,8 +9,9 @@ import useDebounce from '../hooks/useDebounce';
 import { useFilters } from '../hooks/useFilters';
 import { api } from '../config/api';
 import useDocumentTitle from '../hooks/useDocumentTitle';
-import { auth } from '../services/auth';
 import { authFetch } from '../services/authFetch';
+import { trackEvent } from "../utils/analytics";
+
 
 // Modal Component
 interface ModalProps {
@@ -38,6 +39,17 @@ const Modal: React.FC<ModalProps> = ({ isVisible, message, onClose }) => {
     </div>
   );
 };
+
+interface Filters {
+  searchValue?: string;
+  country?: string;
+  productType?: string;
+  year?: string;
+  qualitySystem?: string;
+  subSystems?: string;
+  status?: string;
+}
+
 
 interface Form483 {
   id: number;
@@ -74,9 +86,30 @@ export default function Form483sPage() {
     clearFilters
   } = useFilters('form483s', { defaultProductType: 'Drugs' });
 
+  // Tracking functions for Google Analytics
+  const trackSearchQuery = useCallback((query: string) => {
+    if (query && query.trim()) {
+      trackEvent("Form 483s", "Search Query", query.trim());
+    }
+  }, []);
+
+  const trackFilterUsage = useCallback((category: string, filters: any) => {
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) {  // Only track filters that have been applied
+        trackEvent(category,`Filter Applied: ${key}`, value.toString());
+      }
+    });
+  }, []);
+
+  const trackPageView = useCallback((pageNum: number) => {
+    if (pageNum > 1) { // Only track after first page to avoid duplicate page view tracking
+      trackEvent("Form 483s", "Pagination", `Page ${pageNum}`, pageNum);
+    }
+  }, []);
+
   const fetchForm483List = useCallback(async (isNewSearch = false) => {
     if (isLoading || (!hasMore && !isNewSearch)) return;
-    
+
     setIsLoading(true);
     setError(null);
 
@@ -84,15 +117,24 @@ export default function Form483sPage() {
       const currentPage = isNewSearch ? 0 : page;
       const params = new URLSearchParams({
         start: (currentPage * 20).toString(),
-        length: '20',
+        length: "20",
         searchValue: debouncedSearch,
-        country: selectedFilters.country,
-        productType: selectedFilters.productType,
-        year: selectedFilters.year,
-        qualitySystem: selectedFilters.system,
-        subSystems: selectedFilters.subsystem,
-        status: selectedFilters.status
+        country: selectedFilters.country || "",
+        productType: selectedFilters.productType || "",
+        year: selectedFilters.year || "",
+        qualitySystem: selectedFilters.system || "",
+        subSystems: selectedFilters.subsystem || "",
+        status: selectedFilters.status || "",
       });
+
+      // Track search query if this is a new search with query
+      if (isNewSearch && debouncedSearch) {
+        trackSearchQuery(debouncedSearch);
+      }
+
+      // Track filters for the Form 483 page
+      trackFilterUsage("Form 483 Filter", selectedFilters);
+
       const response = await authFetch(`${api.form483List}?${params}`);
 
       if (response.status === 403) {
@@ -104,29 +146,35 @@ export default function Form483sPage() {
       if (!response.ok) {
         throw new Error("Failed to fetch Form 483s");
       }
-      
 
       const data = await response.json();
-      
+
       if (isNewSearch) {
         setForm483List(data);
         setPage(1);
+        
+        // Track no results scenario
+        if (data.length === 0 && debouncedSearch) {
+          trackEvent("Form 483s", "No Results", debouncedSearch);
+        }
       } else {
-        setForm483List(prev => [...prev, ...data]);
-        setPage(prev => prev + 1);
+        // Track pagination
+        trackPageView(currentPage + 1);
+        
+        setForm483List((prev) => [...prev, ...data]);
+        setPage((prev) => prev + 1);
       }
-      
+
       setHasMore(data.length === 20);
     } catch (err) {
-      const errorMessage = 'Failed to load Form 483s. Please try again later.';
-      setError(errorMessage);
+      setError("Failed to load Form 483s. Please try again later.");
       setShowModal(true);
-      console.error('Error fetching Form 483s:', err);
+      console.error("Error fetching Form 483s:", err);
       setHasMore(false);
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedSearch, page, hasMore, isLoading, selectedFilters]);
+  }, [debouncedSearch, page, hasMore, isLoading, selectedFilters, trackSearchQuery, trackPageView, trackFilterUsage]);
 
   useEffect(() => {
     setForm483List([]);
@@ -162,6 +210,8 @@ export default function Form483sPage() {
   }, [hasMore, isLoading, fetchForm483List, error]);
 
   const handleForm483Click = (id: number) => {
+    trackEvent("Form 483s", "Item Click", `Form 483 ID: ${id}`);
+    
     navigate(`/form-483s/${id}`);
   };
 

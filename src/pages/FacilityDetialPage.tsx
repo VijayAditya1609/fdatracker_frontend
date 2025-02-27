@@ -19,6 +19,7 @@ interface FacilityData {
   subsystems: Record<string, number>;
   form483AndWL: {
     facilitiesInspectionsList483: any[];
+    facilitiesInspectionsListWl: any[];
     facilityName?: string;
   };
 }
@@ -63,6 +64,11 @@ export default function FacilityDetailPage() {
 
         if (!facilityDetail || !charts || !subs || !docs) {
           throw new Error('You have reached your daily limit. Please subscribe.');
+        }
+
+        // Ensure facilitiesInspectionsListWl exists
+        if (!docs.facilitiesInspectionsListWl) {
+          docs.facilitiesInspectionsListWl = [];
         }
 
         setFacilityData({

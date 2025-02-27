@@ -2,6 +2,8 @@ import React from 'react';
 import { Building2, FileWarning, Activity, FileText, Factory, CheckCircle } from 'lucide-react';
 import { Company } from '../../types/company';
 import { useNavigate } from 'react-router-dom';
+import ReactGA from "react-ga4";
+import { trackEvent } from "../../utils/analytics";
 
 interface CompanyCardProps {
   company: Company;
@@ -11,6 +13,14 @@ interface CompanyCardProps {
 export default function CompanyCard({ company, onClick }: CompanyCardProps) {
 
   const handleClick = () => {
+
+    // ReactGA.event({
+    //   category: "Companies",
+    //   action: "Item Click",
+    //   label: `Company Name: ${company.id} : ${company.company_name}`
+    // });
+    trackEvent("Companies", "Item Click", `Company Name: ${company.id} : ${company.company_name}`);
+
     navigate(`/companies/${company.id}`, {
       state: { company }
     });
@@ -22,7 +32,7 @@ export default function CompanyCard({ company, onClick }: CompanyCardProps) {
       className="group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border border-gray-700 hover:border-gray-600 transition-all duration-300 hover:shadow-xl overflow-hidden cursor-pointer"
     >
       <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-      
+
       <div className="p-6 relative z-10">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -47,7 +57,7 @@ export default function CompanyCard({ company, onClick }: CompanyCardProps) {
         {/* Metrics Grid */}
         <div className="gap-4 grid grid-cols-1 md:grid-cols-3">
 
-        <div className="bg-gray-800/50 rounded-lg p-4 group-hover:bg-gray-800 transition-colors">
+          <div className="bg-gray-800/50 rounded-lg p-4 group-hover:bg-gray-800 transition-colors">
             <div className="flex items-center justify-between mb-2">
               <FileText className="h-5 w-5 text-purple-400" />
               <span className={`text-lg font-semibold ${parseInt(company.count_483) > 0 ? 'text-purple-400' : 'text-gray-400'}`}>
@@ -56,7 +66,7 @@ export default function CompanyCard({ company, onClick }: CompanyCardProps) {
             </div>
             <p className="text-sm text-gray-400">Form 483s</p>
           </div>
-          
+
           <div className="bg-gray-800/50 rounded-lg p-4 group-hover:bg-gray-800 transition-colors">
             <div className="flex items-center justify-between mb-2">
               <FileWarning className="h-5 w-5 text-yellow-400" />

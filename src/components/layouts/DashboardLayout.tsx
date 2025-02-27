@@ -10,6 +10,7 @@ import {
   AlertTriangle,
   Building2,
   Factory,
+  FileBadge,
   Search,
   Activity as SystemsIcon,
   Users,
@@ -20,6 +21,7 @@ import {
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Advanced Search', href: '/search', icon: Search, comingSoon: false },
+  { name: 'My Form 483s', href: '/my-form-483s', icon: FileBadge },
   { 
     name: 'FDA Actions',
     icon: ClipboardCheck,
@@ -44,7 +46,7 @@ const navigation = [
       { name: 'Six Systems', href: '/sixSystems', icon: SystemsIcon },
     ],
   },
-  { name: 'Investigators', href: '/investigators', icon: Users }
+  { name: 'Investigators', href: '/investigators', icon: Users },
 ];
 
 interface DashboardLayoutProps {
@@ -92,7 +94,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps): JSX
       >
         <div className={`p-4 flex ${sidebarOpen ? 'justify-between' : 'justify-center'}`}>
           <Link to="/" className="flex items-center">
-            <Logo className={sidebarOpen ? 'w-auto h-8' : 'w-8 h-8'} />
+            <Logo/>
           </Link>
         </div>
 
@@ -154,9 +156,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps): JSX
                           >
                             {child.icon && <child.icon className="mr-3 h-4 w-4" />}
                             {child.name}
-                            {child.comingSoon && (
-                              <span className="ml-auto text-xs text-yellow-400">Soon</span>
-                            )}
                           </Link>
                         ))}
                       </div>
@@ -180,9 +179,6 @@ export default function DashboardLayout({ children }: DashboardLayoutProps): JSX
                                 <div className="flex items-center">
                                   {child.icon && <child.icon className="mr-2 h-4 w-4" />}
                                   {child.name}
-                                  {child.comingSoon && (
-                                    <span className="ml-2 text-xs text-yellow-400">Soon</span>
-                                  )}
                                 </div>
                               </Link>
                             ))}

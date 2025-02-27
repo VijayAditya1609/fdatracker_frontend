@@ -8,12 +8,17 @@ import { getFacilityFilters, getFacilities } from '../services/facilities';
 import { FacilityResponse, Facility } from '../types/facility';
 import useDebounce from '../hooks/useDebounce';
 import Alert from '../components/common/Alert';
+// Add GA import
+import ReactGA from "react-ga4";
+import {FacilityFilters} from '../services/facilities';
+import { trackEvent } from "../utils/analytics";
+
 
 // Add these types at the top
 type SortField = '2' | '3' | '1';
 type SortDirection = 'asc' | 'desc';
 
-interface SortOption {
+interface SortOption {  
   label: string;
   field: SortField;
 }
@@ -33,7 +38,7 @@ export default function FacilitiesPage() {
     businessOperation: 'all'
   });
   const [view, setView] = useState<'map' | 'grid'>('grid');
-  const [filters, setFilters] = useState<any>(null);
+  const [filters, setFilters] = useState<FacilityFilters>();
   const [isLoadingFilters, setIsLoadingFilters] = useState(true);
   const [filterError, setFilterError] = useState<string | null>(null);
   const [facilities, setFacilities] = useState<Facility[]>([]);
@@ -47,6 +52,52 @@ export default function FacilitiesPage() {
   // Add sort states
   const [sortField, setSortField] = useState<SortField>('2');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+
+  // Add GA tracking functions
+  const trackSearch = useCallback((query: string) => {
+    if (query && query.trim()) {
+      // ReactGA.event({
+      //   category: "Facilities",
+      //   action: "Search Query",
+      //   label: query.trim()
+      // });
+
+      trackEvent("Facilities", "Search Query", query.trim());
+    }
+  }, []);
+
+  const trackFilter = useCallback((filterType: string, value: string) => {
+    if (value !== 'all') {
+      // ReactGA.event({
+      //   category: "Facilities",
+      //   action: `Filter Applied: ${filterType}`,
+      //   label: value
+      // });
+      trackEvent("Facilities", `Filter Applied: ${filterType}`, value);
+    }
+  }, []);
+
+  const trackSort = useCallback((field: SortField, direction: SortDirection) => {
+    const fieldLabel = sortOptions.find(option => option.field === field)?.label || field;
+    // ReactGA.event({
+    //   category: "Facilities",
+    //   action: "Sort",
+    //   label: `${fieldLabel} - ${direction === 'asc' ? 'Lowest' : 'Highest'}`
+    // });
+    trackEvent("Facilities", "Sort", `${fieldLabel} - ${direction === 'asc' ? 'Lowest' : 'Highest'}`);
+  }, []);
+
+  const trackPageView = useCallback((pageNum: number) => {
+    if (pageNum > 1) { // Only track after first page to avoid duplicate page view tracking
+      // ReactGA.event({
+      //   category: "Facilities",
+      //   action: "Pagination",
+      //   label: `Page ${pageNum}`,
+      //   value: pageNum
+      // });
+      trackEvent("Facilities", "Pagination", `Page ${pageNum}`, pageNum);
+    }
+  }, []);
 
   // Transform API response to Facility type
   const transformFacility = (facility: FacilityResponse): Facility => {
@@ -99,6 +150,12 @@ export default function FacilitiesPage() {
 
       setIsLoading(true);
       setError(null);
+      
+      // Track search if this is a new search with query
+      if (isNewSearch && debouncedSearch) {
+        trackSearch(debouncedSearch);
+      }
+      
       const data = await getFacilities(
         debouncedSearch,
         isNewSearch ? 0 : page * 20,
@@ -114,7 +171,20 @@ export default function FacilitiesPage() {
       if (isNewSearch) {
         setFacilities(transformedFacilities);
         setPage(1);
+        
+        // Track no results scenario
+        if (data.length === 0 && debouncedSearch) {
+          // ReactGA.event({
+          //   category: "Facilities",
+          //   action: "No Results",
+          //   label: debouncedSearch
+          // });
+          trackEvent("Facilities", "No Results", debouncedSearch);
+        }
       } else {
+        // Track pagination
+        trackPageView(page + 1);
+        
         // Prevent duplicates when loading more
         const newFacilities = transformedFacilities.filter(
           (newItem) => !facilities.some(
@@ -132,7 +202,7 @@ export default function FacilitiesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedSearch, page, selectedFilters, isLoading, hasMore, sortField, sortDirection, facilities]);
+  }, [debouncedSearch, page, selectedFilters, isLoading, hasMore, sortField, sortDirection, facilities, trackSearch, trackPageView]);
 
   // Fetch filters
   useEffect(() => {
@@ -186,11 +256,26 @@ export default function FacilitiesPage() {
     };
   }, [hasMore, isLoading, fetchFacilities]);
 
+  // Modified handleFilterChange to track filter usage
   const handleFilterChange = (key: string, value: string) => {
+    // Only track if changing to a specific value (not 'all')
+    if (value !== 'all') {
+      trackFilter(key, value);
+    }
+    
     setSelectedFilters(prev => ({
       ...prev,
       [key]: value
     }));
+  };
+
+  // Modified to track sort changes
+  const handleSortChange = (field: SortField, direction: SortDirection) => {
+    if (field !== sortField || direction !== sortDirection) {
+      trackSort(field, direction);
+      setSortField(field);
+      setSortDirection(direction);
+    }
   };
 
   // Add helper function for button styles
@@ -212,24 +297,6 @@ export default function FacilitiesPage() {
               Comprehensive list of manufacturing facilities with compliance data and risk analysis.
             </p>
           </div>
-          {/* <div className="mt-4 sm:ml-16 sm:mt-0 sm:flex-none space-x-4">
-            <button
-              onClick={() => setView('grid')}
-              className={`btn-secondary inline-flex items-center ${view === 'grid' ? 'bg-gray-600' : ''
-                }`}
-            >
-              <ListFilter className="w-4 h-4 mr-2" />
-              Grid View
-            </button>
-            <button
-              onClick={() => setView('map')}
-              className={`btn-secondary inline-flex items-center ${view === 'map' ? 'bg-gray-600' : ''
-                }`}
-            >
-              <MapIcon className="w-4 h-4 mr-2" />
-              Map View
-            </button>
-          </div> */}
         </div>
 
         {/* Search and Filters */}
@@ -242,6 +309,21 @@ export default function FacilitiesPage() {
               placeholder="Search facilities..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              // onKeyDown={(e) => {
+              //   if (e.key === 'Enter') {
+              //     // Track explicit Enter key search
+              //     // ReactGA.event({
+              //     //   category: "Facilities",
+              //     //   action: "Search Method",
+              //     //   label: "Enter Key"
+              //     });
+              //     // Immediately fetch to avoid waiting for debounce
+              //     if (searchQuery.trim()) {
+              //       trackSearch(searchQuery);
+              //       fetchFacilities(true);
+              //     }
+              //   }
+              // }}
               className="block w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg 
                        focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-100 
                        placeholder-gray-400"
@@ -274,7 +356,6 @@ export default function FacilitiesPage() {
                       <option key={country} value={country}>{country}</option>
                     ))}
                 </select>
-                {/* <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none" /> */}
               </div>
 
               {/* Business Operation Filter */}
@@ -292,7 +373,6 @@ export default function FacilitiesPage() {
                       <option key={operation} value={operation}>{operation}</option>
                     ))}
                 </select>
-                {/* <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5 pointer-events-none" /> */}
               </div>
             </>
           ) : null}
@@ -304,10 +384,7 @@ export default function FacilitiesPage() {
                 <span className="text-gray-400 flex items-center min-w-24">{label}:</span>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => {
-                      setSortField(field);
-                      setSortDirection('desc');
-                    }}
+                    onClick={() => handleSortChange(field, 'desc')}
                     className={getButtonStyle(field, 'desc')}
                   >
                     Highest
@@ -316,10 +393,7 @@ export default function FacilitiesPage() {
                     />
                   </button>
                   <button
-                    onClick={() => {
-                      setSortField(field);
-                      setSortDirection('asc');
-                    }}
+                    onClick={() => handleSortChange(field, 'asc')}
                     className={getButtonStyle(field, 'asc')}
                   >
                     Lowest
@@ -343,7 +417,10 @@ export default function FacilitiesPage() {
             <>
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
                 {facilities.map((facility) => (
-                  <FacilityCard key={facility.id} facility={facility} />
+                  <FacilityCard 
+                    key={facility.id} 
+                    facility={facility} 
+                  />
                 ))}
               </div>
 

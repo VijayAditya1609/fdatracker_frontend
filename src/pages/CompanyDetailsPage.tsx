@@ -55,9 +55,6 @@ export default function CompanyDetailsPage() {
               <h1 className="text-2xl font-semibold text-white">
                 {companyName || 'Loading...'}
               </h1>
-              <span className="inline-flex items-center rounded-full bg-blue-400/10 px-3 py-1 text-sm font-medium text-blue-400">
-                {id}
-              </span>
             </div>
 
           </div>

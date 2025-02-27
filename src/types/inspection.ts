@@ -5,6 +5,8 @@ export interface Inspection {
   countryname: string;
   inspectionenddate: string;
   producttype: string;
+  classificationcode: string;
+  id: string;
 }
 
 export interface InspectionFilters {

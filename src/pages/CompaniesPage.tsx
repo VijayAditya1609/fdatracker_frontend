@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, MapPin, Clock, Filter, Building2, X, Activity ,ArrowUpDown, ArrowUp, ArrowDown} from 'lucide-react';
+import { Search, MapPin, Clock, Filter, Building2, X, Activity, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../components/layouts/DashboardLayout';
 import CompanyCard from '../components/companies/CompanyCard';
@@ -9,10 +9,12 @@ import { Company } from '../types/company';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import { auth } from '../services/auth';
 import { authFetch } from '../services/authFetch';
+import { trackEvent } from "../utils/analytics";
+// Add GA import
+import ReactGA from "react-ga4";
 
-type SortField = '2' | '1' | '3' ;
+type SortField = '2' | '1' | '3';
 type SortDirection = 'asc' | 'desc';
-
 
 interface SortOption {
   label: string;
@@ -41,7 +43,7 @@ const filters = [
 ];
 
 export default function CompaniesPage() {
-   useDocumentTitle('Companies');
+  useDocumentTitle('Companies');
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const debouncedSearch = useDebounce(searchQuery, 500);
@@ -56,7 +58,49 @@ export default function CompaniesPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const loader = useRef<HTMLDivElement | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
+
   
+  // Add GA tracking functions
+  const trackSearch = useCallback((query: string) => {
+    if (query && query.trim()) {
+      // ReactGA.event({
+      //   category: "Companies",
+      //   action: "Search Query",
+      //   label: query.trim()
+      // });
+      trackEvent("Companies", "Search Query", query.trim());
+    }
+  }, []);
+
+  const trackSort = useCallback((field: SortField, direction: SortDirection) => {
+    const fieldLabel = sortOptions.find(option => option.field === field)?.label || field;
+    // ReactGA.event({
+    //   category: "Companies",
+    //   action: "Sort",
+    //   label: `${fieldLabel} - ${direction === 'asc' ? 'Lowest' : 'Highest'}`
+    // });
+    trackEvent("Companies", "Sort", `${fieldLabel} - ${direction === 'asc' ? 'Lowest' : 'Highest'}`);
+  }, []);
+
+  const trackPageView = useCallback((pageNum: number) => {
+    if (pageNum > 1) { // Only track after first page to avoid duplicate page view tracking
+      // ReactGA.event({
+      //   category: "Companies",
+      //   action: "Pagination",
+      //   label: `Page ${pageNum}`,
+      //   value: pageNum
+      // });
+      trackEvent("Companies", "Pagination", `Page ${pageNum}`, pageNum);
+    }
+  }, []);
+
+  // const trackCompanyClick = useCallback((companyId: string, companyName: string) => {
+  //   ReactGA.event({
+  //     category: "Companies",
+  //     action: "Item Click",
+  //     label: `Company Name: ${companyName} : ${companyId}`
+  //   });
+  // }, []); 
 
   const fetchCompanies = useCallback(async (isNewSearch = false) => {
     if (isLoading || (!hasMore && !isNewSearch)) return;
@@ -66,6 +110,12 @@ export default function CompaniesPage() {
 
     try {
       const currentPage = isNewSearch ? 0 : page;
+      
+      // Track search if this is a new search with query
+      if (isNewSearch && debouncedSearch) {
+        trackSearch(debouncedSearch);
+      }
+      
       const params = new URLSearchParams({
         start: (currentPage * 20).toString(),
         length: '20',
@@ -84,7 +134,23 @@ export default function CompaniesPage() {
       if (isNewSearch) {
         setCompanies(data);
         setPage(1);
+        
+        // Track no results scenario
+        if (data.length === 0 && debouncedSearch) {
+          // ReactGA.event({
+          //   category: "Companies",
+          //   action: "No Results",
+          //   label: debouncedSearch
+          // });
+          trackEvent("Companies", "No Results", debouncedSearch);
+
+
+        }
       } else {
+        // Track pagination
+        trackPageView(page + 1);
+        
+        // Prevent duplicates when loading more
         const newCompanies = data.filter(
           (newItem: any) => !companies.some(
             (existingItem) => existingItem.id === newItem.id
@@ -102,7 +168,7 @@ export default function CompaniesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedSearch, page, hasMore, isLoading, sortField, sortDirection, companies]);
+  }, [debouncedSearch, page, hasMore, isLoading, sortField, sortDirection, companies, trackSearch, trackPageView]);
 
   useEffect(() => {
     setCompanies([]);
@@ -138,17 +204,29 @@ export default function CompaniesPage() {
   }, [hasMore, isLoading, fetchCompanies, error]);
 
   const handleCompanyClick = (companyId: string) => {
+    // Get company name for better tracking label
+    // const company = companies.find(c => c.id === companyId);
+    // const companyName = company?.company_name || companyId;
+    // ReactGA.event({
+    //   category: "Companies",
+    //   action: "Item Click",
+    //   label: `Company Name: ${companyId} : ${companyName}`
+    // });
+    // Track company selection
+    // trackCompanyClick(companyId, companyName);
+    
+    // Navigate to company details
     navigate(`/companies/${companyId}`);
   };
 
-  const handleSort = (field: SortField) => {
-    if (field === sortField) {
-      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-    } else {
+  const handleSort = (field: SortField, direction: SortDirection) => {
+    if (field !== sortField || direction !== sortDirection) {
+      trackSort(field, direction);
       setSortField(field);
-      setSortDirection('desc');
+      setSortDirection(direction);
     }
   };
+  
   const getButtonStyle = (field: SortField, direction: SortDirection) => {
     const isActive = sortField === field && sortDirection === direction;
     return `inline-flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors
@@ -180,6 +258,22 @@ export default function CompaniesPage() {
                 placeholder="Search companies..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    // Track explicit Enter key search
+                    // ReactGA.event({
+                    //   category: "Companies",
+                    //   action: "Search Query",
+                    //   label: searchQuery.trim().toLowerCase(),
+                    // });
+                    trackEvent("Companies", "Search Query", searchQuery.trim().toLowerCase());
+                    // Immediately fetch to avoid waiting for debounce
+                    if (searchQuery.trim()) {
+                      trackSearch(searchQuery);
+                      fetchCompanies(true);
+                    }
+                  }
+                }}
                 className="block w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg 
                          focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-100 
                          placeholder-gray-400"
@@ -194,10 +288,7 @@ export default function CompaniesPage() {
                 <span className="text-gray-400 flex items-center min-w-24">{label}:</span>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => {
-                      setSortField(field);
-                      setSortDirection('desc');
-                    }}
+                    onClick={() => handleSort(field, 'desc')}
                     className={getButtonStyle(field, 'desc')}
                   >
                     Highest
@@ -206,10 +297,7 @@ export default function CompaniesPage() {
                     />
                   </button>
                   <button
-                    onClick={() => {
-                      setSortField(field);
-                      setSortDirection('asc');
-                    }}
+                    onClick={() => handleSort(field, 'asc')}
                     className={getButtonStyle(field, 'asc')}
                   >
                     Lowest
@@ -223,70 +311,6 @@ export default function CompaniesPage() {
           </div>
         </div>
 
-        {/* Active Filters */}
-        {/* {Object.entries(selectedFilters).length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {Object.entries(selectedFilters).map(([key, values]) =>
-              values.map((value) => (
-                <span
-                  key={`${key}-${value}`}
-                  className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-400/10 text-blue-400 text-sm"
-                >
-                  <span className="text-gray-400">{key}:</span>
-                  {value}
-                  <button
-                    onClick={() => {
-                      const newFilters = { ...selectedFilters };
-                      newFilters[key] = newFilters[key].filter(v => v !== value);
-                      if (newFilters[key].length === 0) {
-                        delete newFilters[key];
-                      }
-                      setSelectedFilters(newFilters);
-                    }}
-                    className="ml-1 hover:text-white"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </span>
-              ))
-            )}
-            <button
-              onClick={() => setSelectedFilters({})}
-              className="text-sm text-gray-400 hover:text-white"
-            >
-              Clear all
-            </button>
-          </div>
-        )} */}
-
-        {/* Filter Categories */}
-        {/* {showFilters && (
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-            {filters.map((filter) => (
-              <div key={filter.name} className="relative">
-                <select
-                  className="block w-full pl-4 pr-10 py-2 bg-gray-700 border border-gray-600 rounded-lg 
-                           text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      setSelectedFilters(prev => ({
-                        ...prev,
-                        [filter.name]: [e.target.value]
-                      }));
-                    }
-                  }}
-                  value={selectedFilters[filter.name]?.[0] || ''}
-                >
-                  <option value="">{filter.name}</option>
-                  {filter.options.map((option) => (
-                    <option key={option} value={option}>{option}</option>
-                  ))}
-                </select>
-              </div>
-            ))}
-          </div>
-        )} */}
-
         {/* Companies Grid */}
         <div className="mt-4 grid gap-6 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
           {companies.map((company) => (
@@ -299,16 +323,21 @@ export default function CompaniesPage() {
         </div>
 
         {/* Loading and Error States */}
-        <div ref={loader} className="mt-8 text-center">
+        <div ref={loader} className="mt-8 text-center py-4">
           {isLoading && (
-            <div className="text-gray-400">Loading companies...</div>
+            <div className="flex items-center justify-center">
+              <div className="text-gray-400">Loading companies...</div>
+            </div>
           )}
           {error && (
             <div className="text-red-400">
               {error}
             </div>
           )}
-          {!hasMore && companies.length > 0 && (
+          {!isLoading && !error && companies.length === 0 && (
+            <div className="text-gray-400">No companies found matching your criteria.</div>
+          )}
+          {!hasMore && companies.length > 0 && !isLoading && (
             <div className="text-gray-400">No more companies to load.</div>
           )}
         </div>
