@@ -9,19 +9,17 @@ export default function SubsystemsGrid({ subsystems }: SubsystemsGridProps) {
   const hasSubsystems = Object.keys(subsystems).length > 0;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {hasSubsystems ? (
         Object.entries(subsystems).map(([name, count]) => (
           <div
             key={name}
-            className="bg-gray-800 rounded-lg border border-gray-700 p-6 shadow-md hover:shadow-lg transition-shadow duration-300"
+            className="bg-gray-800 rounded-lg border border-gray-700 p-4 shadow-sm"
           >
-            <div className="flex flex-col space-y-4">
-              <h4 className="text-lg font-medium text-white">{name}</h4>
-              <span className="inline-block rounded-full bg-blue-400/10 px-3 py-1 text-sm font-medium text-blue-400">
-                {count} citations
-              </span>
-            </div>
+            <h4 className="text-base font-medium text-white">{name}</h4>
+            <span className="inline-block mt-2 rounded bg-blue-500 px-3 py-1 text-xs font-medium text-white">
+              {count} citations
+            </span>
           </div>
         ))
       ) : (

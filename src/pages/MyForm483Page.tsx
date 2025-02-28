@@ -351,26 +351,24 @@ const MyForm483: React.FC = () => {
           {isLoading && <p className="text-gray-400">Loading Form 483s...</p>}
           {error && <p className="text-red-400">{error}</p>}
 
-          <div className="mt-4 grid gap-6 grid-cols-1 lg:grid-cols-2 xl:grid-cols-1">
+          <div className="mt-4 grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3">
             {form483List.length > 0 ? (
-              <div className="grid gap-6 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
-                {form483List.map((item) => (
-                  <Form483Card
-                    key={item.id}
-                    form483={{
-                      id: item.id,
-                      facilityName: item.facilityName,
-                      companyName: item.productType,
-                      location: item.countryOfTheIssue,
-                      issueDate: item.issueDate,
-                      numOfObservations: item.numOfObservations,
-                      status: item.severity === 'Complete',
-                      systems: item.systems,
-                    }}
-                    onClick={() => window.open(`/form-483s/${item.pdfId}`, '_blank')}
-                  />
-                ))}
-              </div>
+              form483List.map((item) => (
+                <Form483Card
+                  key={item.id}
+                  form483={{
+                    id: item.id,
+                    facilityName: item.facilityName,
+                    companyName: item.productType,
+                    location: item.countryOfTheIssue,
+                    issueDate: item.issueDate,
+                    numOfObservations: item.numOfObservations,
+                    status: item.severity === 'Complete',
+                    systems: item.systems,
+                  }}
+                  onClick={() => window.open(`/form-483s/${item.pdfId}`, '_blank')}
+                />
+              ))
             ) : (
               <div className="col-span-full flex flex-col items-center justify-center bg-gray-800 rounded-lg p-8 shadow-lg border border-gray-700 mt-4 w-full">
                 <FaFileAlt className="text-gray-500 text-5xl mb-4" />
@@ -379,6 +377,7 @@ const MyForm483: React.FC = () => {
               </div>
             )}
           </div>
+
         </div>
       </div>
     </DashboardLayout>

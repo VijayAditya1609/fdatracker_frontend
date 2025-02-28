@@ -46,6 +46,7 @@ export interface FDAAction {
   location: string;
   issueDate: string;
   systems: string[];
+  status: boolean;
 }
 
 export const getDashboardStats = async (dateRange: string): Promise<DashboardStats> => {

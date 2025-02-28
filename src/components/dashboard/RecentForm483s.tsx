@@ -5,7 +5,13 @@ import FDAActionCard from './FDAActionCard';
 
 export default function RecentForm483s() {
   const { actions, loading, error } = useRecentFDAActions();
-  const form483s = actions.filter(action => action.type === 'Form 483').slice(0, 5);
+  const form483s = actions
+  .filter(action => action.type === 'Form 483')
+  .map(action => ({
+    ...action,
+    status: action.status || false // Default to false if not present
+  }))
+  .slice(0, 5);
 
   if (loading) {
     return (

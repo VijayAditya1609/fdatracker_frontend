@@ -48,7 +48,6 @@ export default function ObservationAnalysisPage() {
       }
     };
     
-
     fetchData();
   }, [pdfId, observationId]);
 
@@ -70,7 +69,16 @@ export default function ObservationAnalysisPage() {
     }
   };
 
-  if (isLoading) return <div>Loading...</div>;
+  if (isLoading) {
+    return (
+      <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 h-screen flex items-center justify-center">
+        <div className="flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
+        </div>
+      </div>
+    );
+  }
+
   if (error) return <div>Error: {error}</div>;
   if (!selectedObservation) return <div>Observation not found</div>;
 
