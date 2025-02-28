@@ -1,76 +1,64 @@
 import React from "react";
-import { Check } from "lucide-react";
+import { Check, Star } from "lucide-react";
 import DashboardLayout from "../components/layouts/DashboardLayout";
 import { api } from "../config/api";
 import { loadStripe } from "@stripe/stripe-js";
-import { auth } from "../services/auth";
-import { useAuth } from "../contexts/AuthContext"; // Add this import
+import { useAuth } from "../contexts/AuthContext"; 
 import { authFetch } from "../services/authFetch";
-
 
 const stripePromise = loadStripe("pk_live_51O1KlFGzSCaeO8GuyDU6FCasEFahkJMJSrsR21ZfyqDvjnYNjRYHViWu3KwCAR54QcWatqZXWmoFloU38MHlxk0H00z2xvt17o");
 
 export default function Subscription() {
-  const { user } = useAuth(); // Get user from auth context
+  const { user } = useAuth(); 
 
-  const handleUpgrade = async (plan: string) => {
+  const handleUpgrade = async () => {
     try {
       const priceId = "price_1Qw3qgGzSCaeO8Gu9NEC202y";
       const response = await authFetch(api.createCheckoutSession, {
         method: "POST",
         body: JSON.stringify({ priceId }),
       });
-      
 
       const data = await response.json();
       const stripe = await stripePromise;
-      const { sessionId } = data;
 
       if (!stripe) {
         console.error("Stripe.js failed to load.");
         return;
       }
 
-      const { error } = await stripe.redirectToCheckout({ sessionId });
-
-      if (error) {
-        console.error("Error redirecting to Stripe Checkout:", error);
-      }
+      await stripe.redirectToCheckout({ sessionId: data.sessionId });
     } catch (error) {
       console.error("Error making request to backend:", error);
     }
   };
 
-  // Determine button content and styles based on subscription status
-  const renderPlanButton = (planType: 'free' | 'elite') => {
+  // Dynamic button rendering based on user's subscription
+  const renderPlanButton = (planType: "free" | "elite") => {
     const isSubscribed = user?.isSubscribed;
-    
-    if (planType === 'free') {
+
+    if (planType === "free") {
       return (
         <button
-          disabled={!isSubscribed}
-          className={`mt-8 w-full ${
-            !isSubscribed 
-              ? 'bg-gray-700 text-white' 
-              : 'bg-gray-600 text-gray-300 cursor-not-allowed'
-          } rounded-md px-4 py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 focus:ring-offset-gray-800`}
+          disabled
+          className="mt-6 w-full bg-gray-700 text-gray-400 cursor-not-allowed rounded-lg py-3 font-semibold text-lg"
         >
-          {!isSubscribed ? 'Current Plan' : 'Basic Plan'}
+          {isSubscribed ? "Basic Plan" : "Current Plan"}
         </button>
       );
     }
 
-    if (planType === 'elite') {
+    if (planType === "elite") {
       return (
         <button
-          onClick={() => !isSubscribed && handleUpgrade("elite")}
-          className={`mt-8 w-full ${
-            isSubscribed 
-              ? 'bg-blue-500 cursor-default' 
-              : 'bg-blue-500 hover:bg-blue-600'
-          } text-white rounded-md px-4 py-2 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800`}
+          onClick={() => !isSubscribed && handleUpgrade()}
+          className={`mt-6 w-full rounded-lg py-3 font-semibold text-lg transition-all duration-300 shadow-md ${
+            isSubscribed
+              ? "bg-green-500 text-white cursor-default"
+              : "bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white hover:scale-105"
+          }`}
         >
-          {isSubscribed ? 'Current Plan' : 'Upgrade Now'}
+          {isSubscribed ? "Current Plan" : "Upgrade Now 🚀"}
         </button>
       );
     }
@@ -78,42 +66,69 @@ export default function Subscription() {
 
   return (
     <DashboardLayout>
-      <div className="px-4 sm:px-6 lg:px-8 py-12 flex flex-col items-center min-h-screen">
-        <div className="w-full max-w-4xl bg-gray-800 rounded-lg shadow-lg border border-gray-700 p-6 sm:p-8 lg:p-10">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-semibold text-white">Subscription Plans</h1>
-            <p className="mt-2 text-gray-400">Choose the plan that best fits your needs</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white px-6">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl font-extrabold bg-gradient-to-r from-blue-500 to-purple-500 text-transparent bg-clip-text">
+            Choose Your Plan
+          </h1>
+          <p className="mt-3 text-gray-400 text-lg">
+            Unlock premium features and take your experience to the next level.
+          </p>
+        </div>
+
+        <div className="grid gap-10 md:grid-cols-2 max-w-4xl w-full">
+          {/* Free Plan */}
+          <div className="relative p-8 rounded-2xl border border-gray-700 bg-gray-800 shadow-lg transition-all duration-300 hover:shadow-blue-500/30 hover:scale-105">
+            <h3 className="text-xl font-bold text-white">🌟 Free Plan</h3>
+            <p className="mt-2 text-gray-400">Get started with basic features</p>
+            <div className="mt-4 text-4xl font-extrabold text-white">$0</div>
+            <span className="text-gray-400 text-sm">per month</span>
+
+            {/* Features List */}
+            <ul className="mt-5 space-y-3 text-gray-300">
+              <li className="flex items-center">
+                <Check className="h-5 w-5 text-green-400 mr-2" />
+                Access to basic features
+              </li>
+              <li className="flex items-center">
+                <Check className="h-5 w-5 text-green-400 mr-2" />
+                Limited usage
+              </li>
+            </ul>
+
+            {/* Render Plan Button */}
+            {renderPlanButton("free")}
           </div>
 
-          <div className="grid gap-8 lg:grid-cols-2 lg:gap-12">
-            {/* Free Plan */}
-            <div className="bg-gray-800 rounded-lg border border-gray-700 shadow-lg">
-              <div className="p-6">
-                <h3 className="text-xl font-semibold text-white">Free Plan</h3>
-                <p className="mt-2 text-gray-400">Perfect for getting started</p>
-                <p className="mt-4">
-                  <span className="text-3xl font-bold text-white">$0</span>
-                  <span className="text-gray-400 ml-2">/month</span>
-                </p>
-                {renderPlanButton('free')}
-              </div>
+          {/* Elite Plan */}
+          <div className="relative p-8 rounded-2xl border border-blue-500 bg-gradient-to-b from-blue-800 to-gray-900 shadow-lg transition-all duration-300 hover:shadow-purple-500/30 hover:scale-105">
+            <div className="absolute -top-4 right-4 bg-blue-500 text-white px-4 py-1 rounded-full text-sm font-medium flex items-center gap-1">
+              <Star className="h-4 w-4 text-yellow-300" /> Premium
             </div>
 
-            {/* Elite Plan */}
-            <div className="bg-gray-800 rounded-lg border border-blue-500 shadow-lg relative">
-              <div className="absolute -top-4 right-4 bg-blue-500 text-white px-3 py-1 rounded-full text-sm font-medium">
-                Recommended
-              </div>
-              <div className="p-6">
-                <h3 className="text-xl font-semibold text-white">Elite Plan</h3>
-                <p className="mt-2 text-gray-400">Advanced features for power users</p>
-                <p className="mt-4">
-                  <span className="text-3xl font-bold text-white">$50</span>
-                  <span className="text-gray-400 ml-2">/month</span>
-                </p>
-                {renderPlanButton('elite')}
-              </div>
-            </div>
+            <h3 className="text-xl font-bold text-white">🚀 Elite Plan</h3>
+            <p className="mt-2 text-gray-400">Unlock all premium features</p>
+            <div className="mt-4 text-4xl font-extrabold text-white">$50</div>
+            <span className="text-gray-400 text-sm">per month</span>
+
+            {/* Features List */}
+            <ul className="mt-5 space-y-3 text-gray-300">
+              <li className="flex items-center">
+                <Check className="h-5 w-5 text-green-400 mr-2" />
+                Full access to all features
+              </li>
+              <li className="flex items-center">
+                <Check className="h-5 w-5 text-green-400 mr-2" />
+                Priority support
+              </li>
+              <li className="flex items-center">
+                <Check className="h-5 w-5 text-green-400 mr-2" />
+                Faster processing
+              </li>
+            </ul>
+
+            {/* Render Plan Button */}
+            {renderPlanButton("elite")}
           </div>
         </div>
       </div>

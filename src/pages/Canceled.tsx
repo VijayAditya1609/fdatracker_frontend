@@ -1,7 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { XCircle } from "lucide-react";
-import Navbar from "../components/dashboard/Navbar";
-import Sidebar from "../components/dashboard/Sidebar";
 import DashboardLayout from "../components/layouts/DashboardLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { loadStripe } from "@stripe/stripe-js";
@@ -11,16 +9,11 @@ import { api } from "../config/api";
 const stripePromise = loadStripe("pk_live_51O1KlFGzSCaeO8GuyDU6FCasEFahkJMJSrsR21ZfyqDvjnYNjRYHViWu3KwCAR54QcWatqZXWmoFloU38MHlxk0H00z2xvt17o");
 
 export default function Canceled() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { user } = useAuth();
 
   useEffect(() => {
     console.log("Payment was canceled.");
   }, []);
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
 
   const handleRetryUpgrade = async () => {
     try {
@@ -32,18 +25,11 @@ export default function Canceled() {
       
       const data = await response.json();
       const stripe = await stripePromise;
-      const { sessionId } = data;
-
       if (!stripe) {
         console.error("Stripe.js failed to load.");
         return;
       }
-
-      const { error } = await stripe.redirectToCheckout({ sessionId });
-
-      if (error) {
-        console.error("Error redirecting to Stripe Checkout:", error);
-      }
+      await stripe.redirectToCheckout({ sessionId: data.sessionId });
     } catch (error) {
       console.error("Error making request to backend:", error);
     }
@@ -51,40 +37,36 @@ export default function Canceled() {
 
   return (
     <DashboardLayout>
-      <div className="flex-1 flex flex-col items-center justify-center min-h-full p-4 bg-gray-900">
-        <div className="flex flex-col items-center justify-center w-full max-w-lg text-center">
-          <XCircle className="text-red-500" size={64} />
-          <h1 className="text-3xl font-semibold text-white mt-4">Payment Canceled</h1>
-          <p className="mt-2 text-gray-400">
-            Your payment was not completed. Please try again or contact support if you need assistance.
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-900 text-white px-6">
+        <div className="text-center mb-10">
+          <XCircle className="h-16 w-16 text-red-500 mx-auto" />
+          <h1 className="text-4xl font-extrabold mt-4 bg-gradient-to-r from-blue-500 to-purple-500 text-transparent bg-clip-text">
+            Payment Canceled
+          </h1>
+          <p className="mt-3 text-gray-400 text-lg">
+            Your payment was not completed. Please try again or contact support.
           </p>
+        </div>
+
+        <div className="p-8 rounded-2xl border border-gray-700 bg-gray-800 shadow-lg transition-all duration-300 hover:shadow-blue-500/30 hover:scale-105 max-w-md w-full">
+          <h3 className="text-xl font-bold text-white">🚀 Elite Plan</h3>
+          <p className="mt-2 text-gray-400">Advanced features for Elite users</p>
+          <div className="mt-4 text-4xl font-extrabold text-white">$50</div>
+          <span className="text-gray-400 text-sm">per month</span>
+
+          <button
+            onClick={handleRetryUpgrade}
+            className="mt-6 w-full rounded-lg py-3 font-semibold text-lg transition-all duration-300 shadow-md bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white hover:scale-105"
+          >
+            Try Again 🔄
+          </button>
           
-          <div className="mt-8 w-full max-w-md">
-            <div className="bg-gray-800 rounded-lg border border-gray-700 p-6 mb-6">
-              <h3 className="text-xl font-semibold text-white">Elite Plan</h3>
-              <p className="mt-2 text-gray-400">Advanced features for Elite users</p>
-              <p className="mt-4">
-                <span className="text-3xl font-bold text-white">$50</span>
-                <span className="text-gray-400 ml-2">/month</span>
-              </p>
-            </div>
-            
-            <button
-              onClick={handleRetryUpgrade}
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-md px-6 py-3 
-                        transition-colors focus:outline-none focus:ring-2 
-                        focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-800"
-            >
-              Try Again
-            </button>
-            
-            <a
-              href="/dashboard"
-              className="block text-center mt-4 text-gray-400 hover:text-white transition-colors"
-            >
-              Return to Dashboard
-            </a>
-          </div>
+          <a
+            href="/dashboard"
+            className="block text-center mt-4 text-gray-400 hover:text-white transition-colors"
+          >
+            Return to Dashboard
+          </a>
         </div>
       </div>
     </DashboardLayout>
