@@ -155,15 +155,15 @@ const MyForm483: React.FC = () => {
   // Handle file upload
   const handleFileUpload = async () => {
     if (!file || !isSubscribed) return;
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       // Create FormData to send the file
       const formData = new FormData();
       formData.append('file', file);
-      
+
       // Make the upload request to the servlet endpoint
       const response = await fetch('/form483/upload', {
         method: 'POST',
@@ -173,10 +173,10 @@ const MyForm483: React.FC = () => {
         },
         credentials: 'include'
       });
-      
+
       // Parse the response
       const result = await response.json();
-      
+
       // Handle the response
       if (result.error) {
         setError(result.error);
@@ -191,10 +191,10 @@ const MyForm483: React.FC = () => {
         // Handle non-Form 483 case
         setError(`The uploaded file is not identified as a Form 483. ID: ${result.pdfId}`);
       }
-      
+
       // Refresh the list after upload
       fetchUserForm483s();
-      
+
     } catch (err) {
       console.error('Upload error:', err);
       setError('Failed to upload file. Please try again.');
@@ -207,14 +207,13 @@ const MyForm483: React.FC = () => {
   // Render submit button
   const renderSubmitButton = () => {
     if (!file || !isSubscribed) return null;
-    
+
     return (
       <button
         onClick={handleFileUpload}
         disabled={loading}
-        className={`mt-4 px-6 py-2 rounded-md font-medium text-white transition-colors duration-150 ${
-          loading ? 'bg-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500'
-        }`}
+        className={`mt-4 px-6 py-2 rounded-md font-medium text-white transition-colors duration-150 ${loading ? 'bg-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-500'
+          }`}
       >
         {loading ? 'Uploading...' : 'Submit Form 483'}
       </button>
@@ -311,9 +310,9 @@ const MyForm483: React.FC = () => {
                 </motion.div>
               )
             )}
-            
+
             {renderSubmitButton()}
-            
+
             {error && (
               <div className="mt-4 p-3 bg-red-900/50 border border-red-800 rounded-md text-red-300">
                 <p>{error}</p>
@@ -352,28 +351,31 @@ const MyForm483: React.FC = () => {
           {isLoading && <p className="text-gray-400">Loading Form 483s...</p>}
           {error && <p className="text-red-400">{error}</p>}
 
-          <div className="mt-4 grid gap-6 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+          <div className="mt-4 grid gap-6 grid-cols-1 lg:grid-cols-2 xl:grid-cols-1">
             {form483List.length > 0 ? (
-              form483List.map((item) => (
-                <Form483Card
-                  key={item.id}
-                  form483={{
-                    id: item.id,
-                    facilityName: item.facilityName,
-                    companyName: item.productType,
-                    location: item.countryOfTheIssue,
-                    issueDate: item.issueDate,
-                    numOfObservations: item.numOfObservations,
-                    status: item.severity === 'Complete',
-                    systems: item.systems,
-                  }}
-                  onClick={() => window.open(`/form-483s/${item.pdfId}`, '_blank')}
-                />
-              ))
+              <div className="grid gap-6 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+                {form483List.map((item) => (
+                  <Form483Card
+                    key={item.id}
+                    form483={{
+                      id: item.id,
+                      facilityName: item.facilityName,
+                      companyName: item.productType,
+                      location: item.countryOfTheIssue,
+                      issueDate: item.issueDate,
+                      numOfObservations: item.numOfObservations,
+                      status: item.severity === 'Complete',
+                      systems: item.systems,
+                    }}
+                    onClick={() => window.open(`/form-483s/${item.pdfId}`, '_blank')}
+                  />
+                ))}
+              </div>
             ) : (
-              <div className="text-center text-gray-400">
-                <p className="text-lg mb-2">No data available</p>
-                <p className="text-sm">Upload your first Form 483 to get started</p>
+              <div className="col-span-full flex flex-col items-center justify-center bg-gray-800 rounded-lg p-8 shadow-lg border border-gray-700 mt-4 w-full">
+                <FaFileAlt className="text-gray-500 text-5xl mb-4" />
+                <p className="text-xl font-semibold text-white">No Form 483s Found</p>
+                <p className="text-md text-gray-400 mt-2 mb-4">Please upload your first Form 483 to get started.</p>
               </div>
             )}
           </div>
