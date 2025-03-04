@@ -41,6 +41,8 @@ import Subscription from './pages/Subscription.tsx';
 import Success from './pages/Success.tsx';
 import Canceled from './pages/Canceled.tsx';
 import MyForm483 from './pages/MyForm483Page.tsx';
+import UserAnalyticsPage from './pages/UserAnalyticsPage';
+import UserDetailsPage from './pages/UserDetailsPage';
 
 
 // Create a separate component for routes that needs access to location
@@ -214,6 +216,17 @@ function AppRoutes() {
             </ProtectedRoute>
           } />
           
+        <Route path="/user-analytics" element={
+          <ProtectedRoute>
+            <UserAnalyticsPage />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/user/:userId" element={
+          <ProtectedRoute>
+            <UserDetailsPage />
+          </ProtectedRoute>
+        } />
 
         {/* Fallback route */}
         {/* 404 Route */}
