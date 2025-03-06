@@ -11,7 +11,10 @@ import { api } from '../config/api';
 import useDocumentTitle from '../hooks/useDocumentTitle';
 import { authFetch } from '../services/authFetch';
 import { trackEvent } from "../utils/analytics";
+import { auth } from '../services/auth';
 
+// Define the PostgREST URL constant
+const POSTGREST_URL = 'https://app.fdatracker.ai:3000';
 
 // Modal Component
 interface ModalProps {
@@ -50,7 +53,6 @@ interface Filters {
   status?: string;
 }
 
-
 interface Form483 {
   id: number;
   facilityName: string;
@@ -60,6 +62,8 @@ interface Form483 {
   numOfObservations: number;
   status: boolean;
   systems: string[];
+  wlId?: number;
+  productType?: string;
 }
 
 export default function Form483sPage() {
@@ -76,6 +80,10 @@ export default function Form483sPage() {
   const [showModal, setShowModal] = useState(false);
   const loader = useRef<HTMLDivElement | null>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
+  
+  // Get current user ID for filtering subscribed data
+  const currentUser = auth.getUser();
+  const currentUserId = currentUser?.id;
 
   const {
     filters,
@@ -115,57 +123,126 @@ export default function Form483sPage() {
 
     try {
       const currentPage = isNewSearch ? 0 : page;
-      const params = new URLSearchParams({
-        start: (currentPage * 20).toString(),
-        length: "20",
-        searchValue: debouncedSearch,
-        country: selectedFilters.country || "",
-        productType: selectedFilters.productType || "",
-        year: selectedFilters.year || "",
-        qualitySystem: selectedFilters.system || "",
-        subSystems: selectedFilters.subsystem || "",
-        status: selectedFilters.status || "",
-      });
-
-      // Track search query if this is a new search with query
-      if (isNewSearch && debouncedSearch) {
-        trackSearchQuery(debouncedSearch);
+      
+      // Build PostgREST query parameters
+      let queryParams = new URLSearchParams();
+      
+      // Pagination - PostgREST uses offset and limit
+      queryParams.append('offset', (currentPage * 20).toString());
+      queryParams.append('limit', '20');
+      
+      // Sorting
+      queryParams.append('order', 'issue_date.desc');
+      
+      // Search functionality
+      if (debouncedSearch) {
+        // PostgREST OR filter for searching across multiple columns
+        queryParams.append('or', `(facility_name.ilike.*${debouncedSearch}*,company_name.ilike.*${debouncedSearch}*,location.ilike.*${debouncedSearch}*)`);
+        
+        // Track search query if this is a new search with query
+        if (isNewSearch) {
+          trackSearchQuery(debouncedSearch);
+        }
       }
-
+      
+      // Apply selected filters
+      if (selectedFilters.country) {
+        queryParams.append('location', `ilike.*${selectedFilters.country}*`);
+      }
+      
+      // For product type, use the product_type column directly
+      if (selectedFilters.productType) {
+        queryParams.append('product_type', `eq.${selectedFilters.productType}`);
+      }
+      
+      if (selectedFilters.year) {
+        queryParams.append('year', `eq.${selectedFilters.year}`);
+      }
+      
+      if (selectedFilters.system) {
+        queryParams.append('systems', `cs.{${selectedFilters.system}}`);
+      }
+      
+      if (selectedFilters.subsystem) {
+        queryParams.append('subsystems', `cs.{${selectedFilters.subsystem}}`);
+      }
+      
+      if (selectedFilters.status) {
+        if (selectedFilters.status === 'With Warning Letter') {
+          queryParams.append('has_warning_letter', 'eq.true');
+        } else if (selectedFilters.status === 'Without Warning Letter') {
+          queryParams.append('has_warning_letter', 'eq.false');
+        }
+      }
+      
+      // User philosophy: Only show subscribed data if it matches current user
+      // We need to build a condition for this
+      let url = `${POSTGREST_URL}/vw_form_483?`;
+      
+      // Base query with all the parameters except the user condition
+      url += queryParams.toString();
+      
+      // Add the data source filter directly to the URL
+      if (currentUserId) {
+        // If user is logged in, show public data OR their own subscribed data
+        // For subscribed data, ensure user_id matches
+        url += `&or=(data_source.eq.public,and(data_source.eq.subscribed,user_id.eq.${currentUserId}))`;
+      } else {
+        // If no user is logged in, only show public data
+        url += `&data_source=eq.public`;
+      }
+      
       // Track filters for the Form 483 page
       trackFilterUsage("Form 483 Filter", selectedFilters);
 
-      const response = await authFetch(`${api.form483List}?${params}`);
+      console.log('Fetching Form 483s with URL:', url);
 
-      if (response.status === 403) {
-        const data = await response.json();
-        setShowModal(true);
-        setError(data.error || "You have reached your daily limit.");
-        return;
-      }
+      // Use regular fetch with minimal headers
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
       if (!response.ok) {
         throw new Error("Failed to fetch Form 483s");
       }
 
-      const data = await response.json();
+      const rawData = await response.json();
+      console.log('Received data:', rawData);
+      
+      // Transform the data to match the expected format for Form483Card
+      const transformedData: Form483[] = rawData.map((item: any) => ({
+        id: item.id,
+        facilityName: item.facility_name,
+        companyName: item.company_name,
+        location: item.location,
+        issueDate: item.issue_date,
+        numOfObservations: parseInt(item.num_of_observations) || 0,
+        status: item.has_warning_letter,
+        systems: Array.isArray(item.systems) ? item.systems : [],
+        wlId: item.wl_id,
+        productType: item.product_type
+      }));
 
       if (isNewSearch) {
-        setForm483List(data);
+        setForm483List(transformedData);
         setPage(1);
         
         // Track no results scenario
-        if (data.length === 0 && debouncedSearch) {
+        if (transformedData.length === 0 && debouncedSearch) {
           trackEvent("Form 483s", "No Results", debouncedSearch);
         }
       } else {
         // Track pagination
         trackPageView(currentPage + 1);
         
-        setForm483List((prev) => [...prev, ...data]);
+        setForm483List((prev) => [...prev, ...transformedData]);
         setPage((prev) => prev + 1);
       }
 
-      setHasMore(data.length === 20);
+      setHasMore(transformedData.length === 20);
     } catch (err) {
       setError("Failed to load Form 483s. Please try again later.");
       setShowModal(true);
@@ -174,7 +251,7 @@ export default function Form483sPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedSearch, page, hasMore, isLoading, selectedFilters, trackSearchQuery, trackPageView, trackFilterUsage]);
+  }, [debouncedSearch, page, hasMore, isLoading, selectedFilters, currentUserId, trackSearchQuery, trackPageView, trackFilterUsage]);
 
   useEffect(() => {
     setForm483List([]);

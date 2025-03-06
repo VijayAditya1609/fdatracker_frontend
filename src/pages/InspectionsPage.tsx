@@ -14,6 +14,9 @@ import { authFetch } from '../services/authFetch';
 import ReactGA from "react-ga4";
 import { trackEvent } from "../utils/analytics";
 
+// Define the PostgREST URL constant like in dashboard.ts
+const POSTGREST_URL = 'https://app.fdatracker.ai:3000';
+
 export default function InspectionsPage() {
   useDocumentTitle('Inspections');
   const [searchQuery, setSearchQuery] = useState('');
@@ -22,7 +25,6 @@ export default function InspectionsPage() {
   const [inspections, setInspections] = useState([]);
   const [filters, setFilters] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  // const [error, setError] = useState(null);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
@@ -37,12 +39,6 @@ export default function InspectionsPage() {
   // Tracking functions for Google Analytics
   const trackSearchQuery = useCallback((query: string) => {
     if (query && query.trim()) {
-      // ReactGA.event({
-      //   category: "Inspections",
-      //   action: "Search Query",
-      //   label: query.trim()
-      // });
-
       trackEvent("Inspections", "Search Query", query.trim());
     }
   }, []);
@@ -50,12 +46,6 @@ export default function InspectionsPage() {
   const trackFilterUsage = (category: string, filters: Record<string, string>) => {
     Object.entries(filters).forEach(([key, value]) => {
       if (value) {  // Only track filters that have been applied
-        // ReactGA.event({
-        //   category: category,
-        //   action: `Filter Applied: ${key}`,
-        //   label: value.toString(),
-        // });
-
         trackEvent(category, `Filter Applied: ${key}`,  value.toString());
       }
     });
@@ -63,39 +53,70 @@ export default function InspectionsPage() {
 
   const trackPageView = useCallback((pageNum: number) => {
     if (pageNum > 1) { // Only track after first page to avoid duplicate page view tracking
-      // ReactGA.event({
-      //   category: "Inspections",
-      //   action: "Pagination",
-      //   label: `Page ${pageNum}`,
-      //   value: pageNum
-      // });
       trackEvent("Inspections", "Pagination", `Page ${pageNum}`, pageNum);
     }
   }, []);
 
-  // Fetch inspections
+  // Fetch inspections using PostgREST
   const fetchInspections = useCallback(async (isNewSearch = false) => {
     if (isLoading || (!hasMore && !isNewSearch)) return;
 
     setIsLoading(true);
     try {
       const currentPage = isNewSearch ? 0 : page;
-      const params = new URLSearchParams({
-        start: (currentPage * 20).toString(),
-        length: '20',
-        searchValue: debouncedSearch,
-        ...selectedFilters
-      });
-
-      // Track search query if this is a new search with query
-      if (isNewSearch && debouncedSearch) {
-        trackSearchQuery(debouncedSearch);
+      
+      // Build PostgREST query parameters
+      let queryParams = new URLSearchParams();
+      
+      // Pagination - PostgREST uses offset and limit
+      queryParams.append('offset', (currentPage * 20).toString());
+      queryParams.append('limit', '20');
+      
+      // Sorting
+      queryParams.append('order', 'inspectionenddate.desc');
+      
+      // Search functionality
+      if (debouncedSearch) {
+        // PostgREST OR filter for searching across multiple columns
+        queryParams.append('or', `(feinumber.ilike.*${debouncedSearch}*,legalname.ilike.*${debouncedSearch}*,addressline1.ilike.*${debouncedSearch}*,inspectionid.ilike.*${debouncedSearch}*)`);
+        
+        // Track search query if this is a new search with query
+        if (isNewSearch) {
+          trackSearchQuery(debouncedSearch);
+        }
       }
-
+      
+      // Apply selected filters
+      Object.entries(selectedFilters).forEach(([key, value]) => {
+        if (value && value !== 'all') {
+          // Handle different filter types appropriately
+          if (key === 'year') {
+            queryParams.append('inspection_year', `eq.${value}`);
+          } else if (key === 'country') {
+            queryParams.append('countryname', `eq.${value}`);
+          } else if (key === 'classificationCode') {
+            queryParams.append('classificationcode', `eq.${value}`);
+          } else if (key === 'productType') {
+            queryParams.append('producttype', `eq.${value}`);
+          } else if (key === 'postedCitations') {
+            queryParams.append('postedcitations', `eq.${value}`);
+          } else {
+            // For any other filters
+            queryParams.append(key, `eq.${value}`);
+          }
+        }
+      });
+      
       // Track filters for the Inspections page
       trackFilterUsage("Inspection Filter", selectedFilters);
 
-      const response = await authFetch(`${api.inspectionsList}?${params}`);
+      // Use regular fetch with minimal headers like in dashboard.ts
+      const response = await fetch(`${POSTGREST_URL}/fda_inspections_view?${queryParams}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
 
       if (!response.ok) throw new Error('Failed to fetch inspections');
 
@@ -107,12 +128,6 @@ export default function InspectionsPage() {
 
         // Track no results scenario
         if (data.length === 0 && debouncedSearch) {
-          // ReactGA.event({
-          //   category: "Inspections",
-          //   action: "No Results",
-          //   label: debouncedSearch
-          // });
-
           trackEvent("Inspections", "No Results", debouncedSearch);
         }
       } else {
@@ -125,8 +140,8 @@ export default function InspectionsPage() {
 
       setHasMore(data.length === 20);
     } catch (err) {
-      setError('Failed to load companies. Please try again later.');
-      console.error('Error fetching companies:', err);
+      setError('Failed to load inspections. Please try again later.');
+      console.error('Error fetching inspections:', err);
       setHasMore(false);
     } finally {
       setIsLoading(false);
@@ -172,6 +187,7 @@ export default function InspectionsPage() {
   useEffect(() => {
     const fetchFilters = async () => {
       try {
+        // We'll still use the original API for filters
         const response = await authFetch(`${api.filters}?pageName=inspections`);
 
         if (!response.ok) throw new Error('Failed to fetch filters');
@@ -179,7 +195,6 @@ export default function InspectionsPage() {
         setFilters(data);
       } catch (error) {
         console.error('Error fetching filters:', error);
-        // setError(error.message);
         setError(error instanceof Error ? error.message : 'Failed to load filters');
       }
     };
@@ -210,6 +225,7 @@ export default function InspectionsPage() {
     }
 
     try {
+      // We'll still use the original API for this functionality
       const response = await authFetch(`${api.inspectionDetail}?inspectionId=${inspection.id}`);
       const data = await response.json();
 
@@ -281,21 +297,6 @@ export default function InspectionsPage() {
                 placeholder="Search inspections..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                // onKeyDown={(e) => {
-                //   if (e.key === 'Enter') {
-                //     // Track explicit Enter key search
-                //     ReactGA.event({
-                //       category: "Inspections",
-                //       action: "Search Method",
-                //       label: "Enter Key"
-                //     });
-                //     // Immediately fetch to avoid waiting for debounce
-                //     if (searchQuery.trim()) {
-                //       trackSearchQuery(searchQuery);
-                //       fetchInspections(true);
-                //     }
-                //   }
-                // }}
                 className="block w-full pl-10 pr-4 py-2 bg-gray-700 border border-gray-600 rounded-lg 
                          focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-100 
                          placeholder-gray-400"

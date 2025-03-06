@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import DashboardLayout from '../components/layouts/DashboardLayout';
 import useDocumentTitle from '../hooks/useDocumentTitle';
-import { Users, UserCheck, UserX, ChevronLeft, ChevronRight, Clock, Search, ChevronUp, ChevronDown } from 'lucide-react';
+import { Users, UserCheck, UserX, ChevronLeft, ChevronRight, Clock, Search, ChevronUp, ChevronDown, Download } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { Line } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -32,9 +33,8 @@ interface User {
   id: number;
   email: string;
   name: string;
-  company_name: string | null;
+  top_sub_system: string | null;
   designation: string | null;
-  department: string | null;
   is_verified: boolean;
   created_at: string;
 }
@@ -55,6 +55,8 @@ export default function UserAnalyticsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'verified' | 'unverified'>('all');
+  const [subSystemFilter, setSubSystemFilter] = useState<string>('all');
+  const [subSystems, setSubSystems] = useState<string[]>([]);
   const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: 'asc' });
   const navigate = useNavigate();
   useDocumentTitle('User Analytics');
@@ -75,6 +77,17 @@ export default function UserAnalyticsPage() {
         const data = await response.json();
         setUsers(data);
         setFilteredUsers(data);
+        
+        // Extract unique sub-systems
+        const uniqueSubSystems = Array.from(
+          new Set(
+            data
+              .map((user: User) => user.top_sub_system)
+              .filter(Boolean) // Remove null values
+          )
+        ).sort() as string[];
+        
+        setSubSystems(uniqueSubSystems);
       } catch (error) {
         console.error('Error fetching users:', error);
       } finally {
@@ -86,9 +99,9 @@ export default function UserAnalyticsPage() {
   }, []);
 
   const totalUsers = users.length;
-  const verifiedUsers = users.filter(user => user.is_verified).length;
-  const unverifiedUsers = users.filter(user => !user.is_verified).length;
-  const averageUsersPerMonth = Math.round(totalUsers / Math.max(1, Math.ceil((Date.now() - new Date(Math.min(...users.map(u => new Date(u.created_at).getTime()))).getTime()) / (30 * 24 * 60 * 60 * 1000))));
+  const verifiedUsers = users.filter((user: User) => user.is_verified).length;
+  const unverifiedUsers = users.filter((user: User) => !user.is_verified).length;
+  const averageUsersPerMonth = Math.round(totalUsers / Math.max(1, Math.ceil((Date.now() - new Date(Math.min(...users.map((u: User) => new Date(u.created_at).getTime()))).getTime()) / (30 * 24 * 60 * 60 * 1000))));
 
   // Sort function
   const sortData = (data: User[], key: keyof User | null, direction: SortDirection) => {
@@ -128,16 +141,20 @@ export default function UserAnalyticsPage() {
       );
     }
 
+    // Apply sub-system filter
+    if (subSystemFilter !== 'all') {
+      result = result.filter((user: User) => user.top_sub_system === subSystemFilter);
+    }
+
     // Apply search
     if (debouncedSearchQuery.trim()) {
       const query = debouncedSearchQuery.toLowerCase().trim();
-      result = result.filter(user => {
+      result = result.filter((user: User) => {
         const searchableFields = [
           user.name,
           user.email,
-          user.company_name,
-          user.designation,
-          user.department
+          user.top_sub_system,
+          user.designation
         ].filter(Boolean); // Remove null values
 
         return searchableFields.some(field => 
@@ -153,7 +170,7 @@ export default function UserAnalyticsPage() {
 
     setFilteredUsers(result);
     setCurrentPage(1); // Reset to first page when filters change
-  }, [users, debouncedSearchQuery, statusFilter, sortConfig]);
+  }, [users, debouncedSearchQuery, statusFilter, subSystemFilter, sortConfig]);
 
   // Apply filters whenever dependencies change
   useEffect(() => {
@@ -207,6 +224,28 @@ export default function UserAnalyticsPage() {
     return rangeWithDots;
   };
 
+  // Function to export data to Excel
+  const exportToExcel = () => {
+    // Create a worksheet with the filtered data
+    const worksheet = XLSX.utils.json_to_sheet(
+      filteredUsers.map((user: User) => ({
+        Name: user.name,
+        Email: user.email,
+        'Top Sub System': user.top_sub_system || '-',
+        Designation: user.designation || '-',
+        Status: user.is_verified ? 'Verified' : 'Not Verified',
+        'Created At': new Date(user.created_at).toLocaleDateString()
+      }))
+    );
+
+    // Create a workbook and add the worksheet
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Users');
+
+    // Generate Excel file and trigger download
+    XLSX.writeFile(workbook, 'user_analytics.xlsx');
+  };
+
   // Function to get monthly user data
   const getMonthlyUserData = useCallback(() => {
     const last6Months = Array.from({ length: 6 }, (_, i) => {
@@ -221,7 +260,7 @@ export default function UserAnalyticsPage() {
       
       return {
         month: date.toLocaleString('default', { month: 'short' }),
-        count: users.filter(user => {
+        count: users.filter((user: User) => {
           const userDate = new Date(user.created_at);
           return userDate >= monthStart && userDate <= monthEnd;
         }).length
@@ -397,6 +436,25 @@ export default function UserAnalyticsPage() {
               <option value="verified">Verified</option>
               <option value="unverified">Unverified</option>
             </select>
+            <select
+              value={subSystemFilter}
+              onChange={(e) => setSubSystemFilter(e.target.value)}
+              className="bg-gray-700 border border-gray-600 rounded-lg text-white px-4 py-2 min-w-[180px]"
+            >
+              <option value="all">All Sub Systems</option>
+              {subSystems.map((subSystem) => (
+                <option key={subSystem} value={subSystem}>
+                  {subSystem}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={exportToExcel}
+              className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Export to Excel
+            </button>
           </div>
 
           {/* Users Table */}
@@ -422,9 +480,8 @@ export default function UserAnalyticsPage() {
                       </div>
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white w-[20%]">Email</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white w-[15%]">Company</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white w-[15%]">Top Sub system</th>
                     <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white w-[12%]">Designation</th>
-                    <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white w-[12%]">Department</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white w-[13%]">Status</th>
                     <th 
                       className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white w-[13%]"
@@ -469,13 +526,10 @@ export default function UserAnalyticsPage() {
                           <div className="text-sm text-gray-400 truncate">{user.email}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-400 truncate">{user.company_name || '-'}</div>
+                          <div className="text-sm text-gray-400 truncate">{user.top_sub_system || '-'}</div>
                         </td>
                         <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-400 truncate">{user.designation || '-'}</div>
-                        </td>
-                        <td className="hidden lg:table-cell px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-400 truncate">{user.department || '-'}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
@@ -548,4 +602,4 @@ export default function UserAnalyticsPage() {
       </div>
     </DashboardLayout>
   );
-} 
+}
