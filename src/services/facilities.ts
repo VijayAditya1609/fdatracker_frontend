@@ -10,7 +10,7 @@ export interface FacilityFilters {
 
 export const getFacilityFilters = async (): Promise<FacilityFilters> => {
   try {
-    const response = await fetch(`${api.filters}?pageName=facilities`);
+    const response = await authFetch(`${api.filters}?pageName=facilities`);
     if (!response.ok) {
       throw new Error('Failed to fetch facility filters');
     }

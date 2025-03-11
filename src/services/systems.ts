@@ -19,7 +19,7 @@ export async function getSystemReport(systemId: string, dateRange: string = 'all
 }
 
 export async function getSubSystemReport(processType: string, dateRange: string = 'all'): Promise<SubSystemReport> {
-  const response = await authFetch(`${api.subSystemReport}?process_type=${encodeURIComponent(processType)}&date_range=${dateRange}`);
+  const response = await authFetch(`${api.subSystemReport}?subSystems=${encodeURIComponent(processType)}&date_range=${dateRange}`);
 
   
   if (!response.ok) {

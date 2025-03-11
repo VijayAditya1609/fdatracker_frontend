@@ -50,6 +50,7 @@ const navigation = [
   },
   { name: 'Investigators', href: '/investigators', icon: Users },
   { name: 'My Form 483s', href: '/my-form-483s', icon: ClipboardCheck },
+  { name: 'User Analytics', href: '/user-analytics', icon: BarChart2 },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ open, onClose }) => {

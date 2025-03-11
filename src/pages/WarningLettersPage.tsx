@@ -14,10 +14,6 @@ import { authFetch } from '../services/authFetch';
 import ReactGA from "react-ga4";
 import { trackEvent } from "../utils/analytics";
 
-// Define the PostgREST URL constant
-const POSTGREST_URL = 'https://app.fdatracker.ai:3000';
-const WARNING_LETTERS_VIEW = 'vw_warning_letters';
-
 interface WarningLetter {
   id: number;
   linked483Id: number | null;
@@ -68,6 +64,11 @@ export default function WarningLettersPage() {
   // Tracking functions for Google Analytics
   const trackSearchQuery = useCallback((query: string) => {
     if (query && query.trim()) {
+      // ReactGA.event({
+      //   category: "Warning Letters",
+      //   action: "Search Query",
+      //   label: query.trim()
+      // });
       trackEvent("Warning Letters", "Search Query", query.trim());
     }
   }, []);
@@ -75,6 +76,11 @@ export default function WarningLettersPage() {
   const trackFilterUsage = useCallback((category: string, filters: Filters) => {
     Object.entries(filters).forEach(([key, value]) => {
       if (value) {  // Only track filters that have been applied
+        // ReactGA.event({
+        //   category: category,
+        //   action: `Filter Applied: ${key}`,
+        //   label: value.toString(),
+        // });
         trackEvent(category,`Filter Applied: ${key}`, value.toString());
       }
     });
@@ -82,6 +88,12 @@ export default function WarningLettersPage() {
 
   const trackPageView = useCallback((pageNum: number) => {
     if (pageNum > 1) { // Only track after first page to avoid duplicate page view tracking
+      // ReactGA.event({
+      //   category: "Warning Letters",
+      //   action: "Pagination",
+      //   label: `Page ${pageNum}`,
+      //   value: pageNum
+      // });
       trackEvent("Warning Letters", "Pagination", `Page ${pageNum}`, pageNum);
     }
   }, []);
@@ -94,132 +106,57 @@ export default function WarningLettersPage() {
 
     try {
       const currentPage = isNewSearch ? 0 : page;
-      
-  // Build PostgREST query parameters
-      let queryParams = new URLSearchParams();
-      
-      // Pagination - PostgREST uses offset and limit
-      queryParams.append('offset', (currentPage * 20).toString());
-      queryParams.append('limit', '20');
-      
-      // Sorting
-      queryParams.append('order', 'issue_date.desc');
-      
-      // Search functionality
-      if (debouncedSearch) {
-        // PostgREST OR filter for searching across multiple columns
-        queryParams.append('or', `(facility_name.ilike.*${debouncedSearch}*,company_name.ilike.*${debouncedSearch}*,location.ilike.*${debouncedSearch}*)`);
-        
-        // Track search query if this is a new search with query
-        if (isNewSearch) {
-          trackSearchQuery(debouncedSearch);
-        }
+      const params = new URLSearchParams({
+        start: (currentPage * 20).toString(),
+        length: '20',
+        searchValue: debouncedSearch,
+        country: selectedFilters.country || "",
+        productType: selectedFilters.productType || "",
+        year: selectedFilters.year || "",
+        qualitySystem: selectedFilters.system || "",
+        subSystems: selectedFilters.subsystem || "",
+        hasForm483: selectedFilters.hasForm483 || ""
+      });
+
+      // Track search query if this is a new search with query
+      if (isNewSearch && debouncedSearch) {
+        trackSearchQuery(debouncedSearch);
       }
-      
-      // Apply selected filters
-      if (selectedFilters.country) {
-        queryParams.append('location', `ilike.*${selectedFilters.country}*`);
-      }
-      
-      if (selectedFilters.productType) {
-        // For product types, which is stored as a text column in the view
-        // Use ilike for partial matching
-        queryParams.append('product_types', `ilike.*${selectedFilters.productType}*`);
-      }
-      
-      if (selectedFilters.year) {
-        queryParams.append('year', `eq.${selectedFilters.year}`);
-      }
-      
-      if (selectedFilters.system) {
-        queryParams.append('systems', `cs.{${selectedFilters.system}}`);
-      }
-      
-      if (selectedFilters.subsystem) {
-        queryParams.append('subsystems', `cs.{${selectedFilters.subsystem}}`);
-      }
-      
-      if (selectedFilters.hasForm483) {
-        if (selectedFilters.hasForm483 === 'yes') {
-          queryParams.append('has_form_483', 'eq.true');
-        } else if (selectedFilters.hasForm483 === 'no') {
-          queryParams.append('has_form_483', 'eq.false');
-        }
-      }
-      
+
       // Track filters for the Warning Letters page
       trackFilterUsage("Warning Letter Filter", selectedFilters);
 
-      console.log('Fetching Warning Letters with URL:', `${POSTGREST_URL}/${WARNING_LETTERS_VIEW}?${queryParams}`);
-
-      // Use regular fetch with minimal headers
-      const response = await fetch(`${POSTGREST_URL}/${WARNING_LETTERS_VIEW}?${queryParams}`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await authFetch(`${api.warningLettersList}?${params}`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch warning letters');
       }
 
-      const rawData = await response.json();
-      console.log('Received data:', rawData);
-      
-      // Transform the data to match the expected format for WarningLetterCard
-      const transformedData: WarningLetter[] = rawData.map((item: any) => {
-        // Parse product_types if it's a string
-        let productTypes: string[] = [];
-        if (typeof item.product_types === 'string') {
-          // Try to parse as JSON if it looks like an array
-          if (item.product_types.startsWith('[') && item.product_types.endsWith(']')) {
-            try {
-              productTypes = JSON.parse(item.product_types);
-            } catch (e) {
-              // If parsing fails, treat as a single item
-              productTypes = [item.product_types];
-            }
-          } else {
-            // If it's just a string, use it as a single item
-            productTypes = [item.product_types];
-          }
-        } else if (Array.isArray(item.product_types)) {
-          productTypes = item.product_types;
-        }
-        
-        return {
-          id: item.id,
-          linked483Id: item.linked_483_id,
-          facilityName: item.facility_name,
-          companyName: item.company_name,
-          location: item.location,
-          issueDate: item.issue_date,
-          numOfViolations: parseInt(item.num_of_violations) || 0,
-          status: item.has_form_483,
-          systems: Array.isArray(item.systems) ? item.systems : [],
-          productTypes: productTypes
-        };
-      });
+      const data = await response.json();
 
       if (isNewSearch) {
-        setWarningLetters(transformedData);
+        setWarningLetters(data);
         setPage(1);
         
         // Track no results scenario
-        if (transformedData.length === 0 && debouncedSearch) {
+        if (data.length === 0 && debouncedSearch) {
+          // ReactGA.event({
+          //   category: "Warning Letters",
+          //   action: "No Results",
+          //   label: debouncedSearch
+          // });
           trackEvent("Warning Letters", "No Results", debouncedSearch);
         }
       } else {
         // Track pagination
         trackPageView(currentPage + 1);
         
-        setWarningLetters((prev) => [...prev, ...transformedData]);
+        setWarningLetters((prev) => [...prev, ...data]);
         setPage((prev) => prev + 1);
       }
 
       // Update `hasMore` based on the response
-      setHasMore(transformedData.length === 20);
+      setHasMore(data.length === 20);
     } catch (err) {
       setError('Failed to load warning letters. Please try again later.');
       console.error('Error fetching warning letters:', err);
@@ -264,6 +201,11 @@ export default function WarningLettersPage() {
 
   const handleWarningLetterClick = (id: number) => {
     // Track Warning Letter clicks
+    // ReactGA.event({
+    //   category: "Warning Letters",
+    //   action: "Item Click",
+    //   label: `Warning Letter ID: ${id}`
+    // });
     trackEvent("Warning Letters", "Item Click",`Warning Letter ID: ${id}`);
     
     navigate(`/warning-letters/${id}`);

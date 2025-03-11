@@ -1,6 +1,6 @@
 import { auth } from "../services/auth";
 
-export const API_BASE_URL = 'http://localhost:8082';
+export const API_BASE_URL = 'http://localhost:8080';
 export const api = {
   // Auth endpoints
   signup: `${API_BASE_URL}/signUp`,
@@ -16,6 +16,7 @@ export const api = {
   form483Request: `${API_BASE_URL}/api/form483-request`,
   observationDetail: `${API_BASE_URL}/api/ObservationDetail`,
   AuditReadinessChecklistForm483: `${API_BASE_URL}/api/AuditReadinessCheckListFor483`,
+  similarObservation: `${API_BASE_URL}/api/similarObservation`,
 
   // My Form 483 endpoints
   myForm483: `${API_BASE_URL}/api/myform483`,
@@ -34,7 +35,7 @@ export const api = {
 
   
   // Filter endpoints
-  filters: `${API_BASE_URL}/getFilters`,
+  filters: `${API_BASE_URL}/api/getFilters`,
   
   // System endpoints
   sixSystemsList: `${API_BASE_URL}/api/SixSystemsList`,
@@ -51,7 +52,7 @@ export const api = {
   facilityDetail: `${API_BASE_URL}/api/facilityDetail`,
   AuditReadinessCheckListForFacility: `${API_BASE_URL}/api/AuditReadinessCheckListForFacility`,
   // Search endpoints
-  search: `${API_BASE_URL}/getFilters`,
+  search: `${API_BASE_URL}/api/getFilters`,
   searchData: `${API_BASE_URL}/api/searchData`,
   
   // Investigator endpoints

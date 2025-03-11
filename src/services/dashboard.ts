@@ -53,30 +53,14 @@ export interface FDAAction {
 }
 
 export const getDashboardStats = async (dateRange: string): Promise<DashboardStats> => {
-  const response = await fetch(`${POSTGREST_URL}/rpc/fn_dashboard_stats`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      p_date_range: dateRange
-    })
-  });
+  const response = await authFetch(`${api.dashboardStats}?date_range=${dateRange}`);
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Failed to fetch dashboard stats: ${errorText}`);
-  }
-  
+  if (!response.ok) throw new Error('Failed to fetch dashboard stats');
   const data = await response.json();
-  
-  // The function returns an array with a single object, so we take the first element
-  const stats = Array.isArray(data) ? data[0] : data;
-  
   return {
-    total483: Number(stats.total483),
-    converted483: Number(stats.converted483),
-    totalInspections: Number(stats.total_inspections)
+    total483: Number(data.total483),
+    converted483: Number(data.converted483),
+    totalInspections: Number(data.totalInspections)
   };
 };
 

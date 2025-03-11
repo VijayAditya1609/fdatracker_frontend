@@ -43,6 +43,7 @@ import Canceled from './pages/Canceled.tsx';
 import MyForm483 from './pages/MyForm483Page.tsx';
 import UserAnalyticsPage from './pages/UserAnalyticsPage';
 import UserDetailsPage from './pages/UserDetailsPage';
+import SimilarObservationsPage from "./pages/SimilarObservationsPage";
 
 
 // Create a separate component for routes that needs access to location
@@ -232,6 +233,10 @@ function AppRoutes() {
         {/* 404 Route */}
         <Route path="/404" element={<NotFoundPage />} />
         <Route path="*" element={<Navigate to="/404" replace />} />
+
+
+        <Route path="/form-483s/:pdfId/analysis/:observationId" element={<ObservationAnalysisPage />} />
+        <Route path="/similar-observation/:observationId/:pdfId" element={<SimilarObservationsPage />} />
       </Routes>
     </AuthProvider>
   );

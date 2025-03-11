@@ -1,4 +1,5 @@
 import { api } from '../config/api';
+import { authFetch } from './authFetch';
 
 export interface FilterResponse {
   country: string[];
@@ -11,7 +12,7 @@ export interface FilterResponse {
 }
 
 export async function getFilters(pageName: string): Promise<FilterResponse> {
-  const response = await fetch(`${api.filters}?pageName=${pageName}`);
+  const response = await authFetch(`${api.filters}?pageName=${pageName}`);
   if (!response.ok) {
     throw new Error('Failed to fetch filters');
   }

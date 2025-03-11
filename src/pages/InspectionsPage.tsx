@@ -362,7 +362,7 @@ export default function InspectionsPage() {
           )}
         </div>
       </div>
-      {selectedInspection && (
+      {/* {selectedInspection && (
         <InspectionModal
           isOpen={isModalOpen}
           onRequestClose={handleCloseModal}
@@ -371,7 +371,7 @@ export default function InspectionsPage() {
           title="Request Form 483"
           content="This Form 483 is not currently available in our system. Submit a request and our team will process it for you."
         />
-      )}
+      )} */}
     </DashboardLayout>
   );
 }

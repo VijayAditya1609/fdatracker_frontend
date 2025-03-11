@@ -37,6 +37,7 @@ interface User {
   designation: string | null;
   is_verified: boolean;
   created_at: string;
+  latest_activity: string | null;
 }
 
 type SortDirection = 'asc' | 'desc';
@@ -57,7 +58,7 @@ export default function UserAnalyticsPage() {
   const [statusFilter, setStatusFilter] = useState<'all' | 'verified' | 'unverified'>('all');
   const [subSystemFilter, setSubSystemFilter] = useState<string>('all');
   const [subSystems, setSubSystems] = useState<string[]>([]);
-  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: null, direction: 'asc' });
+  const [sortConfig, setSortConfig] = useState<SortConfig>({ key: 'latest_activity', direction: 'asc' });
   const navigate = useNavigate();
   useDocumentTitle('User Analytics');
 
@@ -73,20 +74,42 @@ export default function UserAnalyticsPage() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await fetch('https://app.fdatracker.ai:3000/vw_fda_tracker_non_leucine_users');
-        const data = await response.json();
-        setUsers(data);
-        setFilteredUsers(data);
-        
+        // Fetch users from the non-leucine users view
+        const usersResponse = await fetch('https://app.fdatracker.ai:3000/vw_fda_tracker_non_leucine_users');
+        const usersData = await usersResponse.json();
+
+        // Fetch user activity from the vw_all_user_activity view
+        const activityResponse = await fetch('https://app.fdatracker.ai:3000/vw_all_user_activity');
+        const activityData = await activityResponse.json();
+
+        // Map the latest activity to each user
+        const usersWithActivity = usersData.map((user: User) => {
+          // Find the latest activity for this user
+          const userActivities = activityData.filter((activity: any) => activity.user_id === user.id);
+          const latestActivity = userActivities.length > 0
+            ? userActivities.reduce((latest: any, current: any) =>
+              new Date(current.visit_time) > new Date(latest.visit_time) ? current : latest
+            )
+            : null;
+
+          return {
+            ...user,
+            latest_activity: latestActivity ? latestActivity.visit_time : null, // Add latest_activity to the user object
+          };
+        });
+
+        setUsers(usersWithActivity);
+        setFilteredUsers(usersWithActivity);
+
         // Extract unique sub-systems
         const uniqueSubSystems = Array.from(
           new Set(
-            data
+            usersData
               .map((user: User) => user.top_sub_system)
               .filter(Boolean) // Remove null values
           )
         ).sort() as string[];
-        
+
         setSubSystems(uniqueSubSystems);
       } catch (error) {
         console.error('Error fetching users:', error);
@@ -110,13 +133,13 @@ export default function UserAnalyticsPage() {
     return [...data].sort((a, b) => {
       if (a[key] === null) return 1;
       if (b[key] === null) return -1;
-      
-      if (key === 'created_at') {
-        return direction === 'asc' 
+
+      if (key === 'created_at' || key === 'latest_activity') {
+        return direction === 'desc'
           ? new Date(a[key]).getTime() - new Date(b[key]).getTime()
           : new Date(b[key]).getTime() - new Date(a[key]).getTime();
       }
-      
+
       return direction === 'asc'
         ? String(a[key]).localeCompare(String(b[key]))
         : String(b[key]).localeCompare(String(a[key]));
@@ -125,7 +148,7 @@ export default function UserAnalyticsPage() {
 
   // Handle sort
   const handleSort = (key: keyof User) => {
-    const direction: SortDirection = 
+    const direction: SortDirection =
       sortConfig.key === key && sortConfig.direction === 'asc' ? 'desc' : 'asc';
     setSortConfig({ key, direction });
   };
@@ -136,7 +159,7 @@ export default function UserAnalyticsPage() {
 
     // Apply status filter
     if (statusFilter !== 'all') {
-      result = result.filter(user => 
+      result = result.filter(user =>
         statusFilter === 'verified' ? user.is_verified : !user.is_verified
       );
     }
@@ -157,7 +180,7 @@ export default function UserAnalyticsPage() {
           user.designation
         ].filter(Boolean); // Remove null values
 
-        return searchableFields.some(field => 
+        return searchableFields.some(field =>
           field?.toLowerCase().includes(query)
         );
       });
@@ -257,7 +280,7 @@ export default function UserAnalyticsPage() {
     const monthlyData = last6Months.map(date => {
       const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
       const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-      
+
       return {
         month: date.toLocaleString('default', { month: 'short' }),
         count: users.filter((user: User) => {
@@ -466,15 +489,15 @@ export default function UserAnalyticsPage() {
               <table className="w-full table-fixed">
                 <thead>
                   <tr className="border-b border-gray-700">
-                    <th 
+                    <th
                       className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white w-[15%]"
                       onClick={() => handleSort('name')}
                     >
                       <div className="flex items-center">
                         Name
                         {sortConfig.key === 'name' && (
-                          sortConfig.direction === 'asc' ? 
-                            <ChevronUp className="ml-1 h-4 w-4" /> : 
+                          sortConfig.direction === 'asc' ?
+                            <ChevronUp className="ml-1 h-4 w-4" /> :
                             <ChevronDown className="ml-1 h-4 w-4" />
                         )}
                       </div>
@@ -483,15 +506,28 @@ export default function UserAnalyticsPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white w-[15%]">Top Sub system</th>
                     <th className="hidden lg:table-cell px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white w-[12%]">Designation</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white w-[13%]">Status</th>
-                    <th 
+                    <th
                       className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white w-[13%]"
                       onClick={() => handleSort('created_at')}
                     >
                       <div className="flex items-center">
                         Created At
                         {sortConfig.key === 'created_at' && (
-                          sortConfig.direction === 'asc' ? 
-                            <ChevronUp className="ml-1 h-4 w-4" /> : 
+                          sortConfig.direction === 'asc' ?
+                            <ChevronUp className="ml-1 h-4 w-4" /> :
+                            <ChevronDown className="ml-1 h-4 w-4" />
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider cursor-pointer hover:text-white w-[13%]"
+                      onClick={() => handleSort('latest_activity')}
+                    >
+                      <div className="flex items-center">
+                        Latest Activity
+                        {sortConfig.key === 'latest_activity' && (
+                          sortConfig.direction === 'asc' ?
+                            <ChevronUp className="ml-1 h-4 w-4" /> :
                             <ChevronDown className="ml-1 h-4 w-4" />
                         )}
                       </div>
@@ -515,7 +551,7 @@ export default function UserAnalyticsPage() {
                     currentUsers.map((user) => (
                       <tr key={user.id} className="hover:bg-gray-700/50 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div 
+                          <div
                             className="text-sm font-medium text-white truncate cursor-pointer hover:text-blue-400"
                             onClick={() => navigate(`/user/${user.id}`)}
                           >
@@ -532,17 +568,21 @@ export default function UserAnalyticsPage() {
                           <div className="text-sm text-gray-400 truncate">{user.designation || '-'}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
-                            user.is_verified 
-                              ? 'bg-green-400/10 text-green-400' 
-                              : 'bg-red-400/10 text-red-400'
-                          }`}>
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${user.is_verified
+                            ? 'bg-green-400/10 text-green-400'
+                            : 'bg-red-400/10 text-red-400'
+                            }`}>
                             {user.is_verified ? 'Verified' : 'Not Verified'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-400">
                             {new Date(user.created_at).toLocaleDateString()}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-rap">
+                          <div className="text-sm text-gray-400">
+                            {user.latest_activity ? new Date(user.latest_activity).toLocaleString() : 'No activity'}
                           </div>
                         </td>
                       </tr>
@@ -576,11 +616,10 @@ export default function UserAnalyticsPage() {
                         <button
                           key={index}
                           onClick={() => handlePageChange(number as number)}
-                          className={`px-3 py-1 rounded-lg text-sm font-medium ${
-                            currentPage === number
-                              ? 'bg-blue-500 text-white'
-                              : 'text-gray-400 hover:text-white hover:bg-gray-700'
-                          }`}
+                          className={`px-3 py-1 rounded-lg text-sm font-medium ${currentPage === number
+                            ? 'bg-blue-500 text-white'
+                            : 'text-gray-400 hover:text-white hover:bg-gray-700'
+                            }`}
                         >
                           {number}
                         </button>

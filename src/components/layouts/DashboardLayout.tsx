@@ -15,13 +15,15 @@ import {
   Activity as SystemsIcon,
   Users,
   Activity,
-  ChevronRight
+  ChevronRight,
+  BarChart2
 } from 'lucide-react';
 
 const navigation = [
   { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
   { name: 'Advanced Search', href: '/search', icon: Search, comingSoon: false },
   { name: 'My Form 483s', href: '/my-form-483s', icon: FileBadge },
+  { name: 'User Analytics', href: '/user-analytics', icon: BarChart2 },
   { 
     name: 'FDA Actions',
     icon: ClipboardCheck,

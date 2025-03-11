@@ -34,7 +34,7 @@ export const authFetch = async (url: string, options: RequestInit = {}) => {
       ...options, 
       headers,
       // Add credentials for cookies if needed
-      credentials: 'include'  
+      credentials: 'include'
     });
 
     console.log('Response status:', response.status);

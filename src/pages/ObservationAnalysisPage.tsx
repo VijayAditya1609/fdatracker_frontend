@@ -6,7 +6,6 @@ import { Activity, Wrench, AlertCircle, ArrowLeft } from 'lucide-react';
 import ProcessAnalysis from '../components/form483/observation-detail/ProcessAnalysis';
 import CorrectiveActions from '../components/form483/observation-detail/CorrectiveActions';
 import { api } from '../config/api';
-import { auth } from '../services/auth';
 import { authFetch } from '../services/authFetch';
 
 export default function ObservationAnalysisPage() {
@@ -19,10 +18,7 @@ export default function ObservationAnalysisPage() {
   const [error, setError] = useState<string | null>(null);
   const selectedButtonRef = useRef<HTMLButtonElement>(null);
 
-  // Initialize activeProcessType safely
-  const [activeProcessType, setActiveProcessType] = useState<string | null>(
-    selectedObservation ? selectedObservation.process_types_affected[0]?.process_type || null : null
-  );
+  const [activeProcessType, setActiveProcessType] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -30,10 +26,10 @@ export default function ObservationAnalysisPage() {
         setIsLoading(true);
         const response = await authFetch(`${api.form483Detail}?id=${pdfId}`);
         if (!response.ok) throw new Error('Failed to load observations');
-    
+
         const data = await response.json();
         setObservations(data.form483Details.keyObservations);
-    
+
         const observation = data.form483Details.keyObservations.find(
           (obs: Form483Observation) => obs.id.toString() === observationId
         );
@@ -47,7 +43,7 @@ export default function ObservationAnalysisPage() {
         setIsLoading(false);
       }
     };
-    
+
     fetchData();
   }, [pdfId, observationId]);
 
@@ -86,7 +82,7 @@ export default function ObservationAnalysisPage() {
     <DashboardLayout>
       <div className="px-4 sm:px-6 lg:px-8 py-8">
         {/* Header with back button */}
-        <div className="mb-1">
+        <div className="mb-4">
           <button
             onClick={handleBackClick}
             className="flex items-center text-gray-400 hover:text-white mb-4"
@@ -95,18 +91,28 @@ export default function ObservationAnalysisPage() {
             Back to Details
           </button>
           <h1 className="text-2xl font-semibold text-white mb-6">Observation Analysis</h1>
+          <button
+              onClick={() =>
+                navigate(`/similar-observation/${selectedObservation?.id}/${pdfId}`)
+              }
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+            >
+              View Similar Observations
+            </button>
+
+
 
           {/* Horizontal observation tabs */}
           <div className="border-b border-gray-700 mb-6">
-            <nav className="-mb-px flex space-x-8 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-800">
+            <nav className="-mb-px flex space-x-4 overflow-x-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-800">
               {observations.map((observation) => (
                 <button
                   key={observation.id}
                   ref={selectedObservation?.id === observation.id ? selectedButtonRef : null}
                   onClick={() => navigate(`/form-483s/${pdfId}/analysis/${observation.id}`)}
-                  className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center ${selectedObservation.id === observation.id
-                      ? 'border-blue-500 text-blue-400'
-                      : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-700'
+                  className={`whitespace-nowrap py-4 px-2 border-b-2 font-medium text-sm flex items-center ${selectedObservation.id === observation.id
+                    ? 'border-blue-500 text-blue-400'
+                    : 'border-transparent text-gray-400 hover:text-gray-300 hover:border-gray-700'
                     }`}
                 >
                   <AlertCircle className="h-5 w-5 mr-2 text-blue-400" />
@@ -115,7 +121,22 @@ export default function ObservationAnalysisPage() {
               ))}
             </nav>
           </div>
+
+          {/* New Similar Observations Button
+          <div className="flex justify-end">
+            <button
+              onClick={() =>
+                navigate(`/similar-observation?observationId=${selectedObservation?.id}&pdfId=${pdfId}`)
+              }
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+            >
+              View Similar Observations
+            </button>
+          </div> */}
+
         </div>
+
+        {/* Process Types buttons */}
         <div className="flex flex-wrap gap-2 mb-6">
           {selectedObservation.process_types_affected.map((process) => (
             <button
@@ -131,6 +152,8 @@ export default function ObservationAnalysisPage() {
             </button>
           ))}
         </div>
+
+
         {/* Observation Analysis & Corrective Actions Section */}
         <div className="space-y-8">
           {/* Observation Analysis Section */}
@@ -155,7 +178,6 @@ export default function ObservationAnalysisPage() {
             />
           </div>
         </div>
-
       </div>
     </DashboardLayout>
   );
