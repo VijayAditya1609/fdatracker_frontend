@@ -1,6 +1,6 @@
 import { auth } from "../services/auth";
 
-export const API_BASE_URL = 'https://somerset-yuvi.leucine.ai:9443/fda';
+export const API_BASE_URL = 'https://app-test.fdatracker.ai:9443/fda';
 export const api = {
   // Auth endpoints
   signup: `${API_BASE_URL}/signUp`,
