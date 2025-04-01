@@ -1,0 +1,195 @@
+name: Deploy to Development
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+    inputs:
+      deploy_message:
+        description: 'Message for this deployment'
+        required: false
+        default: 'Manual deployment to development environment'
+
+jobs:
+  quality-check:
+    name: Code Quality Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.3'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run linting
+        run: |
+          mkdir -p reports
+          if [ -f "node_modules/.bin/eslint" ]; then
+            npx eslint src/ --ext .js,.jsx,.ts,.tsx -f html -o reports/lint-report.html || true
+          else
+            echo "<html><body><h1>ESLint not configured</h1><p>ESLint is not installed in this project.</p></body></html>" > reports/lint-report.html
+          fi
+        continue-on-error: true
+      
+      - name: Archive lint results
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report
+          path: reports/
+          retention-days: 7
+      
+      - name: Run type checking
+        run: |
+          if [ -f "node_modules/.bin/tsc" ]; then
+            npx tsc --noEmit || true
+          else
+            echo "TypeScript not configured in this project."
+          fi
+        continue-on-error: true
+      
+      - name: Run tests
+        run: |
+          if grep -q "\"test\":" package.json; then
+            npm test || true
+          else
+            echo "No test script found in package.json"
+          fi
+        continue-on-error: true
+  
+  build:
+    name: Build Application
+    needs: quality-check
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.3'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Build application
+        run: npm run build
+      
+      - name: Determine build directory
+        id: build-dir
+        run: |
+          if [ -d "build" ]; then
+            echo "dir=build" >> $GITHUB_OUTPUT
+          elif [ -d "dist" ]; then
+            echo "dir=dist" >> $GITHUB_OUTPUT
+          else
+            echo "No build directory found!"
+            exit 1
+          fi
+      
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-files
+          path: ${{ steps.build-dir.outputs.dir }}
+          retention-days: 1
+  
+  deploy:
+    name: Deploy to Development
+    needs: build
+    runs-on: ubuntu-latest
+    environment: Development # Reference your environment here
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-files
+          path: deploy-files
+      
+      - name: Display structure of downloaded files
+        run: ls -R deploy-files
+      
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.7.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+      
+      - name: Add host to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.DEV_SERVER_IP }} >> ~/.ssh/known_hosts
+      
+      - name: Create backup on server
+        run: |
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.DEV_SERVER_IP }} << 'ENDSSH'
+            # Create backup directory if it doesn't exist
+            BACKUP_DIR="/home/ubuntu/backups/fdatracker_frontend/$(date +%Y-%m)"
+            mkdir -p $BACKUP_DIR
+            
+            # Backup existing deployment if it exists
+            if [ -d "/home/ubuntu/repository/fdatracker_frontend/dist" ]; then
+              TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+              tar -czf "$BACKUP_DIR/dist_${TIMESTAMP}.tar.gz" -C /home/ubuntu/repository/fdatracker_frontend dist
+              echo "Backup created at $BACKUP_DIR/dist_${TIMESTAMP}.tar.gz"
+            else
+              echo "No existing deployment to backup"
+            fi
+            
+            # Ensure the repository directory exists
+            mkdir -p /home/ubuntu/repository/fdatracker_frontend
+          ENDSSH
+      
+      - name: Deploy to development server
+        run: |
+          # Deploy to server
+          rsync -avz --delete deploy-files/ ${{ secrets.SERVER_USER }}@${{ secrets.DEV_SERVER_IP }}:/home/ubuntu/repository/fdatracker_frontend/dist/
+      
+      - name: Verify deployment
+        run: |
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.DEV_SERVER_IP }} << 'ENDSSH'
+            # Set proper permissions
+            chmod -R 755 /home/ubuntu/repository/fdatracker_frontend/dist
+            
+            # Make sure parent directories are accessible
+            chmod o+rx /home/ubuntu
+            chmod o+rx /home/ubuntu/repository
+            
+            # Verify deployment
+            if [ -d "/home/ubuntu/repository/fdatracker_frontend/dist" ] && [ -f "/home/ubuntu/repository/fdatracker_frontend/dist/index.html" ]; then
+              echo "✅ Deployment successful - dist directory and index.html exist"
+              ls -la /home/ubuntu/repository/fdatracker_frontend/dist/
+            else
+              echo "❌ Deployment verification failed"
+              ls -la /home/ubuntu/repository/fdatracker_frontend/
+              exit 1
+            fi
+          ENDSSH
+      
+      - name: Deployment completion message
+        if: success()
+        run: |
+          echo "✅ Deployment to development environment completed successfully"
+          echo "Deployment triggered by: ${{ github.actor }}"
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "Deployment message: ${{ github.event.inputs.deploy_message }}"
+          else
+            echo "Deployed commit: ${{ github.sha }}"
+          fi
+      
+      - name: Deployment failure message
+        if: failure()
+        run: |
+          echo "❌ Deployment to development environment failed"
+          echo "Please check the logs for details"
