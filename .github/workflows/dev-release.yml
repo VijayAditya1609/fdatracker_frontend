@@ -32,12 +32,16 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci  # Changed from npm install to npm ci for consistency
 
       - name: Configure Git
         run: |
           git config --local user.email "github-actions@github.com"
           git config --local user.name "GitHub Actions"
+          # Show the configured Git user for debugging
+          echo "Git user configured as:"
+          git config --get user.email
+          git config --get user.name
       
       - name: Create Development Release
         id: create_release
@@ -106,24 +110,41 @@ jobs:
             git log $LAST_TAG..HEAD --pretty=format:"* %s (%h)" | grep -v "Merge" >> $CHANGELOG_FILE
           fi
           
-          # Commit changes
-          git add package.json $CHANGELOG_FILE
-          git commit -m "chore(release): development version $NEW_VERSION"
-          
-          # Create tag with special dev prefix for development releases
+          # Create safer tag name (replace dots in timestamp with hyphens)
           if [ "$RELEASE_TYPE" == "dev" ]; then
-            TAG_NAME="dev-v$NEW_VERSION"
+            SAFE_VERSION=$(echo $NEW_VERSION | sed 's/\./-/g')
+            TAG_NAME="dev-v$SAFE_VERSION"
           else
             TAG_NAME="v$NEW_VERSION"
           fi
           
+          echo "Tag name: $TAG_NAME"
+          
+          # Commit changes
+          git add package.json $CHANGELOG_FILE
+          git commit -m "chore(release): development version $NEW_VERSION"
+          
+          # Create tag
           git tag -a "$TAG_NAME" -m "Development Release $NEW_VERSION"
+          
+          # Debug git status before pushing
+          echo "Git status:"
+          git status
           
           # Set remote URL with PAT for authentication
           git remote set-url origin https://x-access-token:${{ secrets.PAT }}@github.com/${{ github.repository }}.git
           
-          # Push changes
+          # Verify remote URL (redacted for security)
+          echo "Remote URL configured (redacted for security)"
+          
+          # Debug git remote
+          git remote -v | sed 's/https:\/\/.*@/https:\/\/***@/g'
+          
+          # Try pushing in separate steps to identify which one fails
+          echo "Pushing changes to develop branch..."
           git push origin develop
+          
+          echo "Pushing tag..."
           git push origin "$TAG_NAME"
           
           # Set output for use in later steps
