@@ -18,12 +18,14 @@ on:
 jobs:
   create-development-release:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Explicitly set permissions for tag/release creation
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.PAT }}  # Using PAT for checkout
+          token: ${{ secrets.GITHUB_TOKEN }}  # Use built-in token instead of PAT
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -32,16 +34,12 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci  # Changed from npm install to npm ci for consistency
+        run: npm ci
 
       - name: Configure Git
         run: |
-          git config --local user.email "github-actions@github.com"
-          git config --local user.name "GitHub Actions"
-          # Show the configured Git user for debugging
-          echo "Git user configured as:"
-          git config --get user.email
-          git config --get user.name
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
       
       - name: Create Development Release
         id: create_release
@@ -61,7 +59,7 @@ jobs:
           echo "Release type: $RELEASE_TYPE"
           
           # Parse the version components
-          # First, check if this is already a dev version
+          # Check if this is already a dev version
           if [[ "$CURRENT_VERSION" == *"-dev."* ]]; then
             # This is already a dev version, just get the base version
             BASE_VERSION=$(echo $CURRENT_VERSION | sed 's/-dev\.[0-9]*$//')
@@ -84,14 +82,15 @@ jobs:
             NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
           else
             # For development builds, add dev suffix with timestamp
-            TIMESTAMP=$(date +%Y%m%d%H%M%S)
+            TIMESTAMP=$(date +%Y%m%d%H%M)  # Simplified timestamp without seconds
             NEW_VERSION="$MAJOR.$MINOR.$PATCH-dev.$TIMESTAMP"
           fi
           
           echo "New version: $NEW_VERSION"
           
-          # Update version in package.json
-          npm version $NEW_VERSION --no-git-tag-version --allow-same-version
+          # Update version in package.json using direct sed command
+          # This is more reliable than npm version in some environments
+          sed -i "s/\"version\": \".*\"/\"version\": \"$NEW_VERSION\"/" package.json
           
           # Generate changelog entry
           mkdir -p .changelog
@@ -110,48 +109,50 @@ jobs:
             git log $LAST_TAG..HEAD --pretty=format:"* %s (%h)" | grep -v "Merge" >> $CHANGELOG_FILE
           fi
           
-          # Create safer tag name (replace dots in timestamp with hyphens)
+          # Create tag name with safe format
           if [ "$RELEASE_TYPE" == "dev" ]; then
-            SAFE_VERSION=$(echo $NEW_VERSION | sed 's/\./-/g')
-            TAG_NAME="dev-v$SAFE_VERSION"
+            # Use simplified tag format with only one dot
+            TAG_NAME="dev-$MAJOR-$MINOR-$PATCH-dev-$TIMESTAMP"
           else
             TAG_NAME="v$NEW_VERSION"
           fi
           
           echo "Tag name: $TAG_NAME"
           
-          # Commit changes
-          git add package.json $CHANGELOG_FILE
-          git commit -m "chore(release): development version $NEW_VERSION"
-          
-          # Create tag
-          git tag -a "$TAG_NAME" -m "Development Release $NEW_VERSION"
-          
-          # Debug git status before pushing
-          echo "Git status:"
-          git status
-          
-          # Set remote URL with PAT for authentication
-          git remote set-url origin https://x-access-token:${{ secrets.PAT }}@github.com/${{ github.repository }}.git
-          
-          # Verify remote URL (redacted for security)
-          echo "Remote URL configured (redacted for security)"
-          
-          # Debug git remote
-          git remote -v | sed 's/https:\/\/.*@/https:\/\/***@/g'
-          
-          # Try pushing in separate steps to identify which one fails
-          echo "Pushing changes to develop branch..."
-          git push origin develop
-          
-          echo "Pushing tag..."
-          git push origin "$TAG_NAME"
-          
-          # Set output for use in later steps
+          # Set outputs for use in later steps
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "changelog_file=$CHANGELOG_FILE" >> $GITHUB_OUTPUT
       
+      # Commit changes in a separate step
+      - name: Commit version changes
+        run: |
+          git add package.json .changelog/
+          git commit -m "chore(release): development version ${{ steps.create_release.outputs.new_version }}"
+      
+      # Create tag in a separate step
+      - name: Create tag
+        run: |
+          git tag -a "${{ steps.create_release.outputs.tag_name }}" -m "Development Release ${{ steps.create_release.outputs.new_version }}"
+      
+      # Push changes in a separate step with proper error handling
+      - name: Push changes
+        run: |
+          # First try to push the branch
+          echo "Pushing changes to develop branch..."
+          if ! git push origin develop; then
+            echo "Failed to push to develop branch. This could be due to permissions or branch protection."
+            exit 1
+          fi
+          
+          # Then try to push the tag
+          echo "Pushing tag..."
+          if ! git push origin "${{ steps.create_release.outputs.tag_name }}"; then
+            echo "Failed to push tag. This could be due to tag naming issues or permissions."
+            exit 1
+          fi
+      
+      # Create GitHub Release only if the previous steps succeeded
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -160,4 +161,3 @@ jobs:
           body_path: ${{ steps.create_release.outputs.changelog_file }}
           draft: false
           prerelease: true
-          token: ${{ secrets.PAT }}
