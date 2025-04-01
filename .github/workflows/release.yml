@@ -1,0 +1,124 @@
+name: Development Release
+on:
+  push:
+    branches:
+      - develop
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - dev
+jobs:
+  create-development-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.3'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm install
+      - name: Configure Git
+        run: |
+          git config --local user.email "github-actions@github.com"
+          git config --local user.name "GitHub Actions"
+      
+      - name: Create Development Release
+        id: create_release
+        run: |
+          # Get current version from package.json
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "Current version: $CURRENT_VERSION"
+          
+          # Determine release type based on trigger
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            RELEASE_TYPE="${{ github.event.inputs.release_type }}"
+          else
+            # Automatically use dev release for normal pushes to develop
+            RELEASE_TYPE="dev"
+          fi
+          
+          echo "Release type: $RELEASE_TYPE"
+          
+          # Parse the version components
+          MAJOR=$(echo $CURRENT_VERSION | cut -d. -f1)
+          MINOR=$(echo $CURRENT_VERSION | cut -d. -f2)
+          PATCH=$(echo $CURRENT_VERSION | cut -d. -f3 | sed 's/-dev\.[0-9]*$//' || echo $CURRENT_VERSION | cut -d. -f3)
+          
+          # Increment version based on release type
+          if [ "$RELEASE_TYPE" == "major" ]; then
+            NEW_VERSION="$((MAJOR + 1)).0.0"
+          elif [ "$RELEASE_TYPE" == "minor" ]; then
+            NEW_VERSION="$MAJOR.$((MINOR + 1)).0"
+          elif [ "$RELEASE_TYPE" == "patch" ]; then
+            NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+          else
+            # For development builds, add dev suffix with timestamp
+            TIMESTAMP=$(date +%Y%m%d%H%M%S)
+            NEW_VERSION="$MAJOR.$MINOR.$PATCH-dev.$TIMESTAMP"
+          fi
+          
+          echo "New version: $NEW_VERSION"
+          
+          # Update version in package.json
+          npm version $NEW_VERSION --no-git-tag-version --allow-same-version
+          
+          # Generate changelog entry
+          mkdir -p .changelog
+          CHANGELOG_FILE=".changelog/dev-release-$NEW_VERSION.md"
+          
+          echo "## Development Release $NEW_VERSION ($(date '+%Y-%m-%d'))" > $CHANGELOG_FILE
+          echo "" >> $CHANGELOG_FILE
+          
+          # Get commits since last tag or last 10 commits if no tag exists
+          LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            echo "No previous tags found, including last 10 commits" >> $CHANGELOG_FILE
+            git log HEAD~10..HEAD --pretty=format:"* %s (%h)" | grep -v "Merge" >> $CHANGELOG_FILE
+          else
+            echo "Changes since $LAST_TAG:" >> $CHANGELOG_FILE
+            git log $LAST_TAG..HEAD --pretty=format:"* %s (%h)" | grep -v "Merge" >> $CHANGELOG_FILE
+          fi
+          
+          # Commit changes
+          git add package.json $CHANGELOG_FILE
+          git commit -m "chore(release): development version $NEW_VERSION"
+          
+          # Create tag with special dev prefix for development releases
+          if [ "$RELEASE_TYPE" == "dev" ]; then
+            TAG_NAME="dev-v$NEW_VERSION"
+          else
+            TAG_NAME="v$NEW_VERSION"
+          fi
+          
+          git tag -a "$TAG_NAME" -m "Development Release $NEW_VERSION"
+          
+          # Push changes
+          git push origin develop
+          git push origin "$TAG_NAME"
+          
+          # Set output for use in later steps
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "changelog_file=$CHANGELOG_FILE" >> $GITHUB_OUTPUT
+      
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.create_release.outputs.tag_name }}
+          name: Development Release ${{ steps.create_release.outputs.new_version }}
+          body_path: ${{ steps.create_release.outputs.changelog_file }}
+          draft: false
+          prerelease: true
