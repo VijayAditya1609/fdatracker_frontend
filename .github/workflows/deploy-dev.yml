@@ -9,6 +9,9 @@ on:
         description: 'Message for this deployment'
         required: false
         default: 'Manual deployment to development environment'
+  schedule:
+    # Run at 10:00 AM and 4:00 PM UTC
+    - cron: '0 10,16 * * *'
 
 jobs:
   quality-check:
@@ -29,45 +32,299 @@ jobs:
       
       - name: Run linting
         run: |
-          mkdir -p reports
+          mkdir -p reports/lint
+          
+          # Generate reports
           if [ -f "node_modules/.bin/eslint" ]; then
             # For ESLint v9 with flat config (eslint.config.js)
             if [ -f "eslint.config.js" ]; then
-              npx eslint "src/**/*.{js,jsx,ts,tsx}" -f html -o reports/lint-report.html || true
+              # HTML report
+              npx eslint "src/**/*.{js,jsx,ts,tsx}" -f html -o reports/lint/eslint-report.html || true
+              # JSON report for statistics
+              npx eslint "src/**/*.{js,jsx,ts,tsx}" -f json -o reports/lint/eslint-results.json || true
             # For older ESLint with .eslintrc
             else
-              npx eslint src/ --ext .js,.jsx,.ts,.tsx -f html -o reports/lint-report.html || true
+              npx eslint src/ --ext .js,.jsx,.ts,.tsx -f html -o reports/lint/eslint-report.html || true
+              npx eslint src/ --ext .js,.jsx,.ts,.tsx -f json -o reports/lint/eslint-results.json || true
+            fi
+            
+            # Check for errors - but don't fail the workflow
+            if [ -f "reports/lint/eslint-results.json" ]; then
+              ERROR_COUNT=$(cat reports/lint/eslint-results.json | jq '[.[] | select(.errorCount > 0)] | length' 2>/dev/null || echo "0")
+              if [ $ERROR_COUNT -gt 0 ]; then
+                echo "⚠️ ESLint found errors in $ERROR_COUNT files"
+              else
+                echo "✅ ESLint check passed"
+              fi
+            else
+              echo "⚠️ ESLint results not found"
             fi
           else
-            echo "<html><body><h1>ESLint not configured</h1><p>ESLint is not installed in this project.</p></body></html>" > reports/lint-report.html
+            echo "<html><head><title>ESLint Results</title><style>body{font-family:Arial,sans-serif;margin:20px}</style></head><body><h1>ESLint not configured</h1><p>ESLint is not installed in this project.</p></body></html>" > reports/lint/eslint-report.html
+          fi
+        continue-on-error: true
+      
+      - name: Check code complexity
+        run: |
+          mkdir -p reports/complexity
+          
+          if [ -f "node_modules/.bin/eslint" ]; then
+            # For ESLint v9 with flat config
+            if [ -f "eslint.config.js" ]; then
+              # Run ESLint with complexity rules
+              npx eslint "src/**/*.{js,jsx,ts,tsx}" --rule 'complexity: ["error", { max: 15 }]' --rule 'max-depth: ["error", 4]' --rule 'max-nested-callbacks: ["error", 3]' --rule 'max-params: ["error", 4]' --rule 'max-statements: ["error", 20]' -f json -o reports/complexity/complexity-results.json || true
+            else
+              # For older ESLint
+              npx eslint src/ --ext .js,.jsx,.ts,.tsx --rule 'complexity: ["error", { max: 15 }]' --rule 'max-depth: ["error", 4]' --rule 'max-nested-callbacks: ["error", 3]' --rule 'max-params: ["error", 4]' --rule 'max-statements: ["error", 20]' -f json -o reports/complexity/complexity-results.json || true
+            fi
+            
+            # Generate HTML report
+            echo "<html><head><title>Code Complexity Analysis</title><style>body{font-family:Arial,sans-serif;margin:20px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px}th{background-color:#f2f2f2}tr:nth-child(even){background-color:#f9f9f9}.high{background-color:#ffdddd}.moderate{background-color:#ffffcc}.low{background-color:#ddffdd}</style></head><body><h1>Code Complexity Analysis</h1>" > reports/complexity/complexity-report.html
+            
+            # Process the results
+            if [ -f "reports/complexity/complexity-results.json" ]; then
+              # Extract complexity issues
+              COMPLEXITY_COUNT=$(cat reports/complexity/complexity-results.json | jq '[.[] | select(.messages | length > 0)] | length' 2>/dev/null || echo "0")
+              
+              echo "<h2>Summary</h2>" >> reports/complexity/complexity-report.html
+              echo "<p>Found $COMPLEXITY_COUNT files with complexity issues.</p>" >> reports/complexity/complexity-report.html
+              
+              # Generate table of issues
+              echo "<h2>Complexity Issues</h2>" >> reports/complexity/complexity-report.html
+              echo "<table><tr><th>File</th><th>Line</th><th>Column</th><th>Rule</th><th>Message</th></tr>" >> reports/complexity/complexity-report.html
+              
+              # Add each issue to the table
+              cat reports/complexity/complexity-results.json | jq -r '.[] | select(.messages | length > 0) | .filePath as $file | .messages[] | select(.ruleId | contains("complexity") or . == "max-depth" or . == "max-nested-callbacks" or . == "max-params" or . == "max-statements") | [$file, .line, .column, .ruleId, .message] | @tsv' 2>/dev/null | while IFS=$'\t' read -r file line column rule message; do
+                echo "<tr><td>$file</td><td>$line</td><td>$column</td><td>$rule</td><td>$message</td></tr>" >> reports/complexity/complexity-report.html
+              done
+              
+              echo "</table>" >> reports/complexity/complexity-report.html
+              
+              # Report complexity issues but don't fail the workflow
+              if [ "$COMPLEXITY_COUNT" -gt 0 ]; then
+                echo "⚠️ Found $COMPLEXITY_COUNT files with complexity issues. See the complexity report for details."
+              else
+                echo "✅ No complexity issues found"
+              fi
+            else
+              echo "<p>No complexity data found.</p>" >> reports/complexity/complexity-report.html
+              echo "⚠️ Complexity analysis failed"
+            fi
+            
+            echo "</body></html>" >> reports/complexity/complexity-report.html
+          else
+            echo "<html><head><title>Code Complexity Analysis</title><style>body{font-family:Arial,sans-serif;margin:20px}</style></head><body><h1>Code Complexity Analysis</h1><p>ESLint is not installed in this project, so complexity analysis could not be performed.</p></body></html>" > reports/complexity/complexity-report.html
+          fi
+        continue-on-error: true
+          
+      - name: Check formatting
+        run: |
+          mkdir -p reports/format
+          # Run format check if available
+          if grep -q "\"format:check\":" package.json; then
+            npm run format:check > reports/format/format-check-results.txt 2>&1 || true
+            FORMAT_SUCCESS=$?
+            
+            # Generate HTML report
+            echo "<html><head><title>Format Check</title><style>body{font-family:Arial,sans-serif;margin:20px}pre{background:#f5f5f5;padding:15px;border-radius:5px;overflow:auto;max-height:500px}</style></head><body><h1>Format Check Results</h1>" > reports/format/format-report.html
+            
+            if [ $FORMAT_SUCCESS -eq 0 ]; then
+              echo "<div style='color:green;font-weight:bold;'>✅ All files are properly formatted</div>" >> reports/format/format-report.html
+            else
+              echo "<div style='color:red;font-weight:bold;'>❌ Some files need formatting</div>" >> reports/format/format-report.html
+            fi
+            
+            echo "<h2>Details:</h2><pre>" >> reports/format/format-report.html
+            cat reports/format/format-check-results.txt | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g;' >> reports/format/format-report.html
+            echo "</pre></body></html>" >> reports/format/format-report.html
+            
+            echo "✅ Format check completed"
+          else
+            echo "<html><head><title>Format Check</title><style>body{font-family:Arial,sans-serif;margin:20px}</style></head><body><h1>Format Check Results</h1><p>Format checking is not configured in this project.</p></body></html>" > reports/format/format-report.html
+            echo "⚠️ format:check script not found in package.json"
           fi
         continue-on-error: true
 
-      
-      - name: Archive lint results
-        uses: actions/upload-artifact@v4
-        with:
-          name: lint-report
-          path: reports/
-          retention-days: 7
+      - name: Check for code duplication
+        run: |
+          mkdir -p reports/duplication
+          # Run duplication check if available
+          if grep -q "\"lint:duplication\":" package.json; then
+            npm run lint:duplication > reports/duplication/duplication-results.txt 2>&1 || true
+            
+            # Generate HTML report
+            echo "<html><head><title>Code Duplication Check</title><style>body{font-family:Arial,sans-serif;margin:20px}pre{background:#f5f5f5;padding:15px;border-radius:5px;overflow:auto;max-height:500px}</style></head><body><h1>Code Duplication Results</h1><pre>" > reports/duplication/duplication-report.html
+            cat reports/duplication/duplication-results.txt | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g;' >> reports/duplication/duplication-report.html
+            echo "</pre></body></html>" >> reports/duplication/duplication-report.html
+            
+            echo "✅ Duplication check completed"
+          else
+            echo "<html><head><title>Code Duplication Check</title><style>body{font-family:Arial,sans-serif;margin:20px}</style></head><body><h1>Code Duplication Results</h1><p>Code duplication check is not configured in this project.</p></body></html>" > reports/duplication/duplication-report.html
+            echo "⚠️ lint:duplication script not found in package.json"
+          fi
+        continue-on-error: true
       
       - name: Run type checking
         run: |
+          mkdir -p reports/typescript
           if [ -f "node_modules/.bin/tsc" ]; then
-            npx tsc --noEmit || true
+            # Run type checking
+            npx tsc --noEmit > reports/typescript/type-check-results.txt 2>&1 || true
+            
+            # Convert to HTML (enhanced format)
+            echo "<html><head><title>TypeScript Check Results</title><style>body{font-family:Arial,sans-serif;margin:20px}pre{background:#f5f5f5;padding:15px;border-radius:5px;overflow:auto;max-height:500px}.error{color:#d73a49;font-weight:bold}.file{color:#0366d6;font-weight:bold}</style></head><body><h1>TypeScript Check Results</h1>" > reports/typescript/type-check-report.html
+            
+            # Check if there were any errors
+            if grep -q "error TS" reports/typescript/type-check-results.txt; then
+              ERROR_COUNT=$(grep -c "error TS" reports/typescript/type-check-results.txt)
+              echo "<div style='color:red;font-weight:bold;margin-bottom:20px;'>❌ TypeScript check found $ERROR_COUNT errors</div>" >> reports/typescript/type-check-report.html
+              echo "⚠️ TypeScript check found $ERROR_COUNT errors"
+            else
+              echo "<div style='color:green;font-weight:bold;margin-bottom:20px;'>✅ TypeScript check passed successfully</div>" >> reports/typescript/type-check-report.html
+              echo "✅ TypeScript check passed"
+            fi
+            
+            # Format the output with syntax highlighting
+            echo "<pre>" >> reports/typescript/type-check-report.html
+            cat reports/typescript/type-check-results.txt | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g; s/error TS[0-9]*/<span class="error">&<\/span>/g; s/\([^)]*\.tsx\?\)/<span class="file">&<\/span>/g;' >> reports/typescript/type-check-report.html
+            echo "</pre></body></html>" >> reports/typescript/type-check-report.html
           else
+            echo "<html><head><title>TypeScript Check Results</title><style>body{font-family:Arial,sans-serif;margin:20px}</style></head><body><h1>TypeScript Check Results</h1><p>TypeScript is not configured in this project.</p></body></html>" > reports/typescript/type-check-report.html
             echo "TypeScript not configured in this project."
           fi
         continue-on-error: true
       
-      - name: Run tests
+      - name: Run tests with coverage
         run: |
-          if grep -q "\"test\":" package.json; then
-            npm test || true
+          mkdir -p reports/coverage
+          if grep -q "\"test:coverage\":" package.json; then
+            npm run test:coverage || true
+            
+            # Copy HTML coverage report
+            if [ -d "coverage/lcov-report" ]; then
+              cp -r coverage/lcov-report/* reports/coverage/
+              echo "✅ Test coverage report generated"
+            else
+              echo "⚠️ No coverage report found"
+              echo "<html><head><title>Test Coverage</title><style>body{font-family:Arial,sans-serif;margin:20px}</style></head><body><h1>No coverage report found</h1><p>The test:coverage script ran but did not generate a coverage report.</p></body></html>" > reports/coverage/index.html
+            fi
           else
-            echo "No test script found in package.json"
+            echo "<html><head><title>Test Coverage</title><style>body{font-family:Arial,sans-serif;margin:20px}</style></head><body><h1>Test Coverage</h1><p>Test coverage script is not configured in this project.</p></body></html>" > reports/coverage/index.html
+            echo "⚠️ test:coverage script not found in package.json"
           fi
         continue-on-error: true
+      
+      - name: Run security scan
+        run: |
+          mkdir -p reports/security
+          
+          # Run npm audit to check for vulnerabilities
+          npm audit --json > reports/security/npm-audit.json || true
+          
+          # Generate a detailed HTML report
+          echo "<html><head><title>Security Scan</title><style>body{font-family:Arial,sans-serif;margin:20px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px}th{background-color:#f2f2f2}tr:nth-child(even){background-color:#f9f9f9}.high{background-color:#ffdddd}.moderate{background-color:#ffffcc}.low{background-color:#ddffdd}</style></head><body><h1>Security Scan Results</h1>" > reports/security/security-report.html
+          
+          # Process the audit results
+          if [ -f "reports/security/npm-audit.json" ]; then
+            # Extract vulnerability counts by severity
+            HIGH_COUNT=$(cat reports/security/npm-audit.json | jq '.vulnerabilities | map(select(.severity == "high")) | length' 2>/dev/null || echo "0")
+            MODERATE_COUNT=$(cat reports/security/npm-audit.json | jq '.vulnerabilities | map(select(.severity == "moderate")) | length' 2>/dev/null || echo "0")
+            LOW_COUNT=$(cat reports/security/npm-audit.json | jq '.vulnerabilities | map(select(.severity == "low")) | length' 2>/dev/null || echo "0")
+            
+            echo "<h2>Summary</h2>" >> reports/security/security-report.html
+            echo "<p>Found $HIGH_COUNT high, $MODERATE_COUNT moderate, and $LOW_COUNT low severity vulnerabilities.</p>" >> reports/security/security-report.html
+            
+            # Generate table of vulnerabilities
+            echo "<h2>Vulnerability Details</h2>" >> reports/security/security-report.html
+            echo "<table><tr><th>Package</th><th>Severity</th><th>Vulnerable Versions</th><th>Recommendation</th></tr>" >> reports/security/security-report.html
+            
+            # Add each vulnerability to the table
+            cat reports/security/npm-audit.json | jq -r '.vulnerabilities | to_entries[] | "\(.key)|\(.value.severity)|\(.value.range)|\(.value.recommendation // "No specific recommendation")"' 2>/dev/null | while IFS="|" read -r package severity range recommendation; do
+              echo "<tr class=\"$severity\"><td>$package</td><td>$severity</td><td>$range</td><td>$recommendation</td></tr>" >> reports/security/security-report.html
+            done
+            
+            echo "</table>" >> reports/security/security-report.html
+            
+            # Report high severity vulnerabilities but don't fail the workflow
+            if [ "$HIGH_COUNT" -gt 0 ]; then
+              echo "⚠️ Found $HIGH_COUNT high severity vulnerabilities. See the security report for details."
+            else
+              echo "✅ No high severity vulnerabilities found"
+            fi
+          else
+            echo "<p>No vulnerability data found.</p>" >> reports/security/security-report.html
+            echo "⚠️ Security scan failed"
+          fi
+          
+          echo "</body></html>" >> reports/security/security-report.html
+          
+          # Also run the project's security script if it exists
+          if grep -q "\"security\":" package.json; then
+            npm run security || true
+          fi
+        continue-on-error: true
+      
+      # Bundle analysis
+      - name: Analyze bundle size
+        run: |
+          mkdir -p reports/bundle
+          # Install source-map-explorer if not already installed
+          npm install --no-save source-map-explorer
+          
+          # First try to build with source maps for analysis
+          GENERATE_SOURCEMAP=true npm run build || npm run build || true
+          
+          # Use source-map-explorer to generate HTML report
+          if [ -d "dist" ]; then
+            npx source-map-explorer "dist/**/*.js" --html reports/bundle/bundle-analysis.html || true
+            echo "✅ Bundle analysis completed for dist directory"
+          elif [ -d "build" ]; then
+            npx source-map-explorer "build/**/*.js" --html reports/bundle/bundle-analysis.html || true
+            echo "✅ Bundle analysis completed for build directory"
+          else
+            echo "⚠️ No build directory found for bundle analysis"
+            echo "<html><head><title>Bundle Analysis</title><style>body{font-family:Arial,sans-serif;margin:20px}</style></head><body><h1>No build directory found</h1><p>Could not find a build or dist directory to analyze.</p></body></html>" > reports/bundle/bundle-analysis.html
+          fi
+        continue-on-error: true
+      
+      # Generate index.html and upload reports
+      - name: Generate report index
+        run: |
+          echo "<!DOCTYPE html><html><head><title>Development Quality Reports</title><style>body{font-family:Arial,sans-serif;margin:20px;color:#333}h1{color:#0366d6;border-bottom:2px solid #eaecef;padding-bottom:0.3em;margin-bottom:1em}.reports{display:grid;grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));gap:20px}.report-card{border:1px solid #e1e4e8;border-radius:6px;padding:16px;transition:all 0.2s ease;box-shadow:0 1px 3px rgba(0,0,0,0.12)}.report-card:hover{box-shadow:0 4px 8px rgba(0,0,0,0.12);transform:translateY(-2px)}.report-card h2{margin-top:0;color:#0366d6}.report-card p{color:#586069;margin-bottom:1em}.view-btn{display:inline-block;background:#0366d6;color:white;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:500;transition:background-color 0.2s ease}.view-btn:hover{background:#045cc1}</style></head><body><h1>Development Quality Reports</h1><div class=\"reports\">" > reports/index.html
+          
+          # Add ESLint card
+          echo "<div class=\"report-card\"><h2>ESLint</h2><p>Code style and quality analysis</p><a class=\"view-btn\" href=\"lint/eslint-report.html\">View Report</a></div>" >> reports/index.html
+          
+          # Add Complexity card
+          echo "<div class=\"report-card\"><h2>Complexity</h2><p>Code complexity analysis</p><a class=\"view-btn\" href=\"complexity/complexity-report.html\">View Report</a></div>" >> reports/index.html
+          
+          # Add Format card
+          echo "<div class=\"report-card\"><h2>Formatting</h2><p>Code formatting check</p><a class=\"view-btn\" href=\"format/format-report.html\">View Report</a></div>" >> reports/index.html
+          
+          # Add Duplication card
+          echo "<div class=\"report-card\"><h2>Duplication</h2><p>Code duplication analysis</p><a class=\"view-btn\" href=\"duplication/duplication-report.html\">View Report</a></div>" >> reports/index.html
+          
+          # Add TypeScript card
+          echo "<div class=\"report-card\"><h2>TypeScript</h2><p>Type checking results</p><a class=\"view-btn\" href=\"typescript/type-check-report.html\">View Report</a></div>" >> reports/index.html
+          
+          # Add Coverage card
+          echo "<div class=\"report-card\"><h2>Test Coverage</h2><p>Code coverage from unit tests</p><a class=\"view-btn\" href=\"coverage/index.html\">View Report</a></div>" >> reports/index.html
+          
+          # Add Security card
+          echo "<div class=\"report-card\"><h2>Security</h2><p>Security vulnerability scan</p><a class=\"view-btn\" href=\"security/security-report.html\">View Report</a></div>" >> reports/index.html
+          
+          # Add Bundle Analysis card
+          echo "<div class=\"report-card\"><h2>Bundle Analysis</h2><p>Size and composition of build bundles</p><a class=\"view-btn\" href=\"bundle/bundle-analysis.html\">View Report</a></div>" >> reports/index.html
+          
+          echo "</div></body></html>" >> reports/index.html
+        continue-on-error: true
+      
+      - name: Archive quality reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: development-quality-reports
+          path: reports/
+          retention-days: 7
   
   build:
     name: Build Application
