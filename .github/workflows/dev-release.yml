@@ -48,12 +48,23 @@ jobs:
           CURRENT_VERSION=$(node -p "require('./package.json').version")
           echo "Current version: $CURRENT_VERSION"
           
-          # Determine release type based on trigger
+          # Determine release type based on trigger or commit message
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             RELEASE_TYPE="${{ github.event.inputs.release_type }}"
           else
-            # Automatically use dev release for normal pushes to develop
-            RELEASE_TYPE="dev"
+            # Check commit message for version indicator
+            COMMIT_MESSAGE=$(git log -1 --pretty=%B)
+            
+            if [[ "$COMMIT_MESSAGE" == *"[major]"* ]]; then
+              RELEASE_TYPE="major"
+            elif [[ "$COMMIT_MESSAGE" == *"[minor]"* ]]; then
+              RELEASE_TYPE="minor"
+            elif [[ "$COMMIT_MESSAGE" == *"[patch]"* ]]; then
+              RELEASE_TYPE="patch"
+            else
+              # Default to dev for normal pushes to develop
+              RELEASE_TYPE="dev"
+            fi
           fi
           
           echo "Release type: $RELEASE_TYPE"
@@ -123,12 +134,13 @@ jobs:
           echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "changelog_file=$CHANGELOG_FILE" >> $GITHUB_OUTPUT
+          echo "release_type=$RELEASE_TYPE" >> $GITHUB_OUTPUT
       
       # Commit changes in a separate step
       - name: Commit version changes
         run: |
           git add package.json .changelog/
-          git commit -m "chore(release): development version ${{ steps.create_release.outputs.new_version }}"
+          git commit -m "chore(release): ${{ steps.create_release.outputs.release_type }} version ${{ steps.create_release.outputs.new_version }}"
       
       # Create tag in a separate step
       - name: Create tag
