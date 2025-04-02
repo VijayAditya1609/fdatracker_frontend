@@ -31,11 +31,18 @@ jobs:
         run: |
           mkdir -p reports
           if [ -f "node_modules/.bin/eslint" ]; then
-            npx eslint src/ --ext .js,.jsx,.ts,.tsx -f html -o reports/lint-report.html || true
+            # For ESLint v9 with flat config (eslint.config.js)
+            if [ -f "eslint.config.js" ]; then
+              npx eslint "src/**/*.{js,jsx,ts,tsx}" -f html -o reports/lint-report.html || true
+            # For older ESLint with .eslintrc
+            else
+              npx eslint src/ --ext .js,.jsx,.ts,.tsx -f html -o reports/lint-report.html || true
+            fi
           else
             echo "<html><body><h1>ESLint not configured</h1><p>ESLint is not installed in this project.</p></body></html>" > reports/lint-report.html
           fi
         continue-on-error: true
+
       
       - name: Archive lint results
         uses: actions/upload-artifact@v4
