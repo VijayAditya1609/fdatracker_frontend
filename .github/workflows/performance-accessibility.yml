@@ -1,0 +1,143 @@
+name: Performance & Accessibility
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
+  workflow_dispatch:
+
+jobs:
+  performance-accessibility:
+    name: Performance & Accessibility Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.3'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+      
+      # Build the project
+      - name: Build project
+        run: npm run build
+      
+      # Set up a simple server to serve the built files
+      - name: Install serve
+        run: npm install -g serve
+      
+      # Start the server in the background
+      - name: Start server
+        run: |
+          serve -s dist &
+          echo "Server PID: $!" > server.pid
+          sleep 5  # Give the server time to start
+      
+      # Run Lighthouse CI
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          urls: |
+            http://localhost:3000
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+          configPath: '.github/lighthouse-config.json'
+        continue-on-error: true
+      
+      # Create reports directory
+      - name: Create reports directory
+        run: mkdir -p reports/performance
+      
+      # Bundle analysis
+      - name: Analyze bundle size
+        run: |
+          mkdir -p reports/performance/bundle
+          # Install source-map-explorer if not already installed
+          npm install --no-save source-map-explorer
+          
+          # First try to build with source maps for analysis
+          GENERATE_SOURCEMAP=true npm run build || npm run build || true
+          
+          # Use source-map-explorer to generate HTML report
+          if [ -d "dist" ]; then
+            npx source-map-explorer "dist/**/*.js" --html reports/performance/bundle/bundle-analysis.html || true
+            echo "✅ Bundle analysis completed for dist directory"
+          elif [ -d "build" ]; then
+            npx source-map-explorer "build/**/*.js" --html reports/performance/bundle/bundle-analysis.html || true
+            echo "✅ Bundle analysis completed for build directory"
+          else
+            echo "⚠️ No build directory found for bundle analysis"
+            echo "<html><head><title>Bundle Analysis</title><style>body{font-family:Arial,sans-serif;margin:20px}</style></head><body><h1>No build directory found</h1><p>Could not find a build or dist directory to analyze.</p></body></html>" > reports/performance/bundle/bundle-analysis.html
+          fi
+          
+          # Also run bundlesize for size limits
+          npm install -g bundlesize
+          
+          # Use existing bundlesize.config.json if it exists, otherwise create one
+          if [ ! -f "bundlesize.config.json" ]; then
+            echo '{
+              "files": [
+                {
+                  "path": "./dist/**/*.js",
+                  "maxSize": "250 kB"
+                },
+                {
+                  "path": "./dist/**/*.css",
+                  "maxSize": "50 kB"
+                }
+              ]
+            }' > bundlesize.config.json
+          fi
+          
+          bundlesize > reports/performance/bundlesize-report.txt || true
+        continue-on-error: true
+      
+      # Run accessibility tests
+      - name: Install axe-cli
+        run: npm install -g @axe-core/cli
+      
+      - name: Run accessibility tests
+        run: |
+          axe http://localhost:3000 --save reports/performance/accessibility-report.json
+        continue-on-error: true
+      
+      # Stop the server
+      - name: Stop server
+        run: kill $(cat server.pid)
+        if: always()
+      
+      # Generate index.html for performance reports
+      - name: Generate performance report index
+        run: |
+          echo "<!DOCTYPE html><html><head><title>Performance & Accessibility Reports</title><style>body{font-family:Arial,sans-serif;margin:20px;color:#333}h1{color:#0366d6;border-bottom:2px solid #eaecef;padding-bottom:0.3em;margin-bottom:1em}.reports{display:grid;grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));gap:20px}.report-card{border:1px solid #e1e4e8;border-radius:6px;padding:16px;transition:all 0.2s ease;box-shadow:0 1px 3px rgba(0,0,0,0.12)}.report-card:hover{box-shadow:0 4px 8px rgba(0,0,0,0.12);transform:translateY(-2px)}.report-card h2{margin-top:0;color:#0366d6}.report-card p{color:#586069;margin-bottom:1em}.view-btn{display:inline-block;background:#0366d6;color:white;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:500;transition:background-color 0.2s ease}.view-btn:hover{background:#045cc1}</style></head><body><h1>Performance & Accessibility Reports</h1><div class=\"reports\">" > reports/performance/index.html
+          
+          # Add Bundle Analysis card
+          echo "<div class=\"report-card\"><h2>Bundle Analysis</h2><p>Size and composition of build bundles</p><a class=\"view-btn\" href=\"bundle/bundle-analysis.html\">View Report</a></div>" >> reports/performance/index.html
+          
+          # Add Bundlesize card
+          echo "<div class=\"report-card\"><h2>Bundle Size Limits</h2><p>Size limits for JavaScript and CSS bundles</p><a class=\"view-btn\" href=\"bundlesize-report.txt\">View Report</a></div>" >> reports/performance/index.html
+          
+          # Add Accessibility card
+          if [ -f "reports/performance/accessibility-report.json" ]; then
+            echo "<div class=\"report-card\"><h2>Accessibility</h2><p>Accessibility testing with axe-core</p><a class=\"view-btn\" href=\"accessibility-report.json\">View Report</a></div>" >> reports/performance/index.html
+          fi
+          
+          echo "</div></body></html>" >> reports/performance/index.html
+        continue-on-error: true
+      
+      # Upload performance and accessibility reports as artifacts
+      - name: Upload performance & accessibility reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: performance-accessibility-reports
+          path: reports/performance/
+          retention-days: 14

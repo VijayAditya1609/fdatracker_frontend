@@ -92,9 +92,9 @@ jobs:
           elif [ "$RELEASE_TYPE" == "patch" ]; then
             NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
           else
-            # For development builds, add dev suffix with timestamp
-            TIMESTAMP=$(date +%Y%m%d%H%M)  # Simplified timestamp without seconds
-            NEW_VERSION="$MAJOR.$MINOR.$PATCH-dev.$TIMESTAMP"
+            # For development builds, add dev suffix with formatted date and time
+            FORMATTED_DATE=$(date '+%Y-%m-%d %H:%M')  # Human-readable date and time format
+            NEW_VERSION="$MAJOR.$MINOR.$PATCH-dev.$FORMATTED_DATE"
           fi
           
           echo "New version: $NEW_VERSION"
@@ -122,7 +122,8 @@ jobs:
           
           # Create tag name with safe format
           if [ "$RELEASE_TYPE" == "dev" ]; then
-            # Use simplified tag format with only one dot
+            # Use simplified tag format with timestamp for tag (needs to be URL-safe)
+            TIMESTAMP=$(date +%Y%m%d%H%M)
             TAG_NAME="dev-$MAJOR-$MINOR-$PATCH-dev-$TIMESTAMP"
           else
             TAG_NAME="v$NEW_VERSION"
@@ -166,6 +167,7 @@ jobs:
       
       # Create GitHub Release only if the previous steps succeeded
       - name: Create GitHub Release
+        id: create_github_release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.create_release.outputs.tag_name }}
@@ -173,3 +175,12 @@ jobs:
           body_path: ${{ steps.create_release.outputs.changelog_file }}
           draft: false
           prerelease: true
+      
+      # Trigger the package publishing workflow
+      - name: Trigger Package Publishing
+        if: steps.create_release.outputs.release_type != 'dev'
+        uses: peter-evans/repository-dispatch@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          event-type: trigger-package-publish
+          client-payload: '{"release_tag": "${{ steps.create_release.outputs.tag_name }}", "version": "${{ steps.create_release.outputs.new_version }}"}'

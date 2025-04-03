@@ -1,0 +1,86 @@
+name: Publish Package
+
+on:
+  release:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Version type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - prerelease
+  repository_dispatch:
+    types: [trigger-package-publish]
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.client_payload.release_tag || github.ref }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@VijayAditya1609'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Configure Git
+        run: |
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+      
+      - name: Update version
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          if [[ "${{ github.event.inputs.version_type }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            # If specific version provided
+            npm version ${{ github.event.inputs.version_type }} --no-git-tag-version
+          else
+            # If patch, minor, major, or prerelease
+            npm version ${{ github.event.inputs.version_type }} --no-git-tag-version
+          fi
+          
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "Updated version to $NEW_VERSION"
+          
+          git add package.json
+          git commit -m "chore(release): version $NEW_VERSION"
+          git tag -a "v$NEW_VERSION" -m "Release v$NEW_VERSION"
+          git push origin HEAD:${GITHUB_REF#refs/heads/}
+          git push origin "v$NEW_VERSION"
+      
+      - name: Install vite-plugin-dts
+        run: npm install --no-save vite-plugin-dts
+      
+      - name: Build package
+        run: npm run build:lib
+      
+      - name: Publish to GitHub Packages
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Build successful
+        run: |
+          echo "✅ Package published successfully!"
+          echo "Package: @VijayAditya1609/fdatracker-frontend"
+          echo "Version: $(node -p "require('./package.json').version")"
+          echo "Registry: https://npm.pkg.github.com/"

@@ -1,0 +1,147 @@
+name: Security Analysis
+
+on:
+  push:
+    branches:
+      - develop
+  pull_request:
+    branches:
+      - develop
+  schedule:
+    - cron: '0 0 * * 0'  # Run once a week on Sunday
+  workflow_dispatch:
+
+jobs:
+  security-analysis:
+    name: Security Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for proper analysis
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.18.3'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+      
+      # npm audit for dependency vulnerabilities
+      - name: Run security scan
+        run: |
+          mkdir -p reports/security
+          
+          # Run npm audit to check for vulnerabilities
+          npm audit --json > reports/security/npm-audit.json || true
+          
+          # Generate a detailed HTML report
+          echo "<html><head><title>Security Scan</title><style>body{font-family:Arial,sans-serif;margin:20px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ddd;padding:8px}th{background-color:#f2f2f2}tr:nth-child(even){background-color:#f9f9f9}.high{background-color:#ffdddd}.moderate{background-color:#ffffcc}.low{background-color:#ddffdd}</style></head><body><h1>Security Scan Results</h1>" > reports/security/security-report.html
+          
+          # Process the audit results
+          if [ -f "reports/security/npm-audit.json" ]; then
+            # Extract vulnerability counts by severity
+            HIGH_COUNT=$(cat reports/security/npm-audit.json | jq '.vulnerabilities | map(select(.severity == "high")) | length' 2>/dev/null || echo "0")
+            MODERATE_COUNT=$(cat reports/security/npm-audit.json | jq '.vulnerabilities | map(select(.severity == "moderate")) | length' 2>/dev/null || echo "0")
+            LOW_COUNT=$(cat reports/security/npm-audit.json | jq '.vulnerabilities | map(select(.severity == "low")) | length' 2>/dev/null || echo "0")
+            
+            echo "<h2>Summary</h2>" >> reports/security/security-report.html
+            echo "<p>Found $HIGH_COUNT high, $MODERATE_COUNT moderate, and $LOW_COUNT low severity vulnerabilities.</p>" >> reports/security/security-report.html
+            
+            # Generate table of vulnerabilities
+            echo "<h2>Vulnerability Details</h2>" >> reports/security/security-report.html
+            echo "<table><tr><th>Package</th><th>Severity</th><th>Vulnerable Versions</th><th>Recommendation</th></tr>" >> reports/security/security-report.html
+            
+            # Add each vulnerability to the table
+            cat reports/security/npm-audit.json | jq -r '.vulnerabilities | to_entries[] | "\(.key)|\(.value.severity)|\(.value.range)|\(.value.recommendation // "No specific recommendation")"' 2>/dev/null | while IFS="|" read -r package severity range recommendation; do
+              echo "<tr class=\"$severity\"><td>$package</td><td>$severity</td><td>$range</td><td>$recommendation</td></tr>" >> reports/security/security-report.html
+            done
+            
+            echo "</table>" >> reports/security/security-report.html
+            
+            # Report high severity vulnerabilities but don't fail the workflow
+            if [ "$HIGH_COUNT" -gt 0 ]; then
+              echo "⚠️ Found $HIGH_COUNT high severity vulnerabilities. See the security report for details."
+            else
+              echo "✅ No high severity vulnerabilities found"
+            fi
+          else
+            echo "<p>No vulnerability data found.</p>" >> reports/security/security-report.html
+            echo "⚠️ Security scan failed"
+          fi
+          
+          echo "</body></html>" >> reports/security/security-report.html
+          
+          # Also run the project's security script if it exists
+          if grep -q "\"security\":" package.json; then
+            npm run security || true
+          fi
+        continue-on-error: true
+      
+      # Initialize CodeQL
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: javascript, typescript
+      
+      # Autobuild attempts to build any compiled languages
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v2
+      
+      # Run CodeQL Analysis
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v2
+        with:
+          category: "/language:javascript,typescript"
+      
+      # Secret scanning with Gitleaks
+      - name: Check for secrets in code
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}
+        with:
+          config-path: .github/gitleaks.toml
+          report-format: json
+          report-path: reports/security/gitleaks-report.json
+        continue-on-error: true
+      
+      # License compliance checking
+      - name: Check licenses
+        run: |
+          npx license-checker --json > reports/security/license-report.json
+        continue-on-error: true
+      
+      # Generate index.html for security reports
+      - name: Generate security report index
+        run: |
+          echo "<!DOCTYPE html><html><head><title>Security Reports</title><style>body{font-family:Arial,sans-serif;margin:20px;color:#333}h1{color:#0366d6;border-bottom:2px solid #eaecef;padding-bottom:0.3em;margin-bottom:1em}.reports{display:grid;grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));gap:20px}.report-card{border:1px solid #e1e4e8;border-radius:6px;padding:16px;transition:all 0.2s ease;box-shadow:0 1px 3px rgba(0,0,0,0.12)}.report-card:hover{box-shadow:0 4px 8px rgba(0,0,0,0.12);transform:translateY(-2px)}.report-card h2{margin-top:0;color:#0366d6}.report-card p{color:#586069;margin-bottom:1em}.view-btn{display:inline-block;background:#0366d6;color:white;padding:8px 16px;border-radius:6px;text-decoration:none;font-weight:500;transition:background-color 0.2s ease}.view-btn:hover{background:#045cc1}</style></head><body><h1>Security Reports</h1><div class=\"reports\">" > reports/security/index.html
+          
+          # Add npm audit card
+          echo "<div class=\"report-card\"><h2>Vulnerability Scan</h2><p>npm audit security scan</p><a class=\"view-btn\" href=\"security-report.html\">View Report</a></div>" >> reports/security/index.html
+          
+          # Add License card
+          echo "<div class=\"report-card\"><h2>License Compliance</h2><p>Dependency license check</p><a class=\"view-btn\" href=\"license-report.json\">View Report</a></div>" >> reports/security/index.html
+          
+          # Add Gitleaks card if the report exists
+          if [ -f "reports/security/gitleaks-report.json" ]; then
+            echo "<div class=\"report-card\"><h2>Secret Detection</h2><p>Gitleaks secret scanning</p><a class=\"view-btn\" href=\"gitleaks-report.json\">View Report</a></div>" >> reports/security/index.html
+          fi
+          
+          echo "</div></body></html>" >> reports/security/index.html
+        continue-on-error: true
+      
+      # Upload security reports as artifacts
+      - name: Upload security reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-reports
+          path: reports/security/
+          retention-days: 14

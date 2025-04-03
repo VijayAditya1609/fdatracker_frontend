@@ -1,0 +1,121 @@
+# Gitleaks configuration file
+# This file defines rules for detecting secrets in your codebase
+
+title = "Gitleaks Configuration"
+
+# Define global settings
+[allowlist]
+description = "Global allowlist"
+paths = [
+    '''node_modules''',
+    '''dist''',
+    '''coverage''',
+    '''\.git''',
+    '''\.github''',
+    '''package-lock\.json''',
+    '''yarn\.lock'''
+]
+
+# AWS Secret Access Key
+[[rules]]
+id = "aws-secret-access-key"
+description = "AWS Secret Access Key"
+regex = '''(?i)aws(.{0,20})?(?-i)['\"][0-9a-zA-Z\/+]{40}['\"]'''
+tags = ["key", "AWS"]
+severity = "CRITICAL"
+
+# AWS Access Key ID
+[[rules]]
+id = "aws-access-key-id"
+description = "AWS Access Key ID"
+regex = '''(?i)AKIA[0-9A-Z]{16}'''
+tags = ["key", "AWS"]
+severity = "CRITICAL"
+
+# GitHub Token
+[[rules]]
+id = "github-token"
+description = "GitHub Token"
+regex = '''(?i)github(.{0,20})?(?-i)['\"][0-9a-zA-Z]{35,40}['\"]'''
+tags = ["key", "GitHub"]
+severity = "CRITICAL"
+
+# Generic API Key
+[[rules]]
+id = "generic-api-key"
+description = "Generic API Key"
+regex = '''(?i)(api_key|apikey|api token|api_token)(.{0,20})?['\"][0-9a-zA-Z]{16,45}['\"]'''
+tags = ["key", "API", "generic"]
+severity = "HIGH"
+
+# Generic Secret
+[[rules]]
+id = "generic-secret"
+description = "Generic Secret"
+regex = '''(?i)(secret|password|credential)(.{0,20})?['\"][0-9a-zA-Z!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]{8,64}['\"]'''
+tags = ["key", "secret", "generic"]
+severity = "HIGH"
+
+# Private Key
+[[rules]]
+id = "private-key"
+description = "Private Key"
+regex = '''-----BEGIN ((RSA|DSA|EC|PGP|OPENSSH) )?PRIVATE KEY( BLOCK)?-----'''
+tags = ["key", "private"]
+severity = "CRITICAL"
+
+# JWT Token
+[[rules]]
+id = "jwt-token"
+description = "JWT Token"
+regex = '''eyJ[a-zA-Z0-9]{10,}\.eyJ[a-zA-Z0-9]{10,}\.[a-zA-Z0-9_\-]{10,}'''
+tags = ["key", "JWT"]
+severity = "MEDIUM"
+
+# Stripe API Key
+[[rules]]
+id = "stripe-api-key"
+description = "Stripe API Key"
+regex = '''(?i)(sk|pk)_(test|live)_[0-9a-zA-Z]{24,34}'''
+tags = ["key", "Stripe"]
+severity = "CRITICAL"
+
+# Google API Key
+[[rules]]
+id = "google-api-key"
+description = "Google API Key"
+regex = '''(?i)(AIza[0-9A-Za-z\-_]{35})'''
+tags = ["key", "Google"]
+severity = "CRITICAL"
+
+# Firebase Database URL
+[[rules]]
+id = "firebase-database-url"
+description = "Firebase Database URL"
+regex = '''(?i)https://[a-zA-Z0-9-]+\.firebaseio\.com'''
+tags = ["key", "Firebase"]
+severity = "HIGH"
+
+# Slack Token
+[[rules]]
+id = "slack-token"
+description = "Slack Token"
+regex = '''xox[baprs]-[0-9a-zA-Z]{10,48}'''
+tags = ["key", "Slack"]
+severity = "CRITICAL"
+
+# Slack Webhook
+[[rules]]
+id = "slack-webhook"
+description = "Slack Webhook"
+regex = '''https://hooks.slack.com/services/T[a-zA-Z0-9_]{8}/B[a-zA-Z0-9_]{8}/[a-zA-Z0-9_]{24}'''
+tags = ["key", "Slack"]
+severity = "CRITICAL"
+
+# NPM Token
+[[rules]]
+id = "npm-token"
+description = "NPM Token"
+regex = '''(?i)(npm_[a-zA-Z0-9]{36})'''
+tags = ["key", "NPM"]
+severity = "CRITICAL"
